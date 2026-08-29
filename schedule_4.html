@@ -233,6 +233,13 @@
     width:52px;
     font-size:12px;
   }
+  table.grid th:not(:first-child), table.grid td:not(:first-child){
+    border-inline-start:1px solid var(--line);
+  }
+  .segment.seg-sound table.grid th:not(:first-child), .segment.seg-sound table.grid td:not(:first-child){ border-inline-start-color:rgba(76,175,125,0.35); }
+  .segment.seg-media table.grid th:not(:first-child), .segment.seg-media table.grid td:not(:first-child){ border-inline-start-color:rgba(91,155,217,0.35); }
+  .segment.seg-design table.grid th:not(:first-child), .segment.seg-design table.grid td:not(:first-child){ border-inline-start-color:rgba(224,151,63,0.35); }
+  .segment.seg-workshop table.grid th:not(:first-child), .segment.seg-workshop table.grid td:not(:first-child){ border-inline-start-color:rgba(217,83,79,0.35); }
   table.grid td.empty{ color:transparent; }
   table.grid td.empty::after{ content:"·"; color:var(--muted2); }
   table.grid tr.note-row td{
@@ -332,7 +339,13 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button>
+  <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
+    <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
+    <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
+    <div style="direction:rtl;text-align:center;margin:8px 0 6px;font-size:11.5px">מיזוגים (merges):</div>
+    <textarea id="debugMerges" readonly style="width:100%;height:140px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
+  </div>
 </footer>
 
 <script>
@@ -407,15 +420,17 @@ function parseDay(rows, dayName, merges){
   const claimed = new Set(groupedHeaders.map(g => g.rowIndex));
 
   // 2) "flat" header rows: room names listed directly, with a single implied time column
-  //    (detected because the row itself is blank in that column while the NEXT row holds a time there)
+  //    (detected because the row itself is blank in that column while a row shortly below holds a time there)
   const flatHeaders = [];
   for (let i = 0; i < N; i++) {
     if (claimed.has(i)) continue;
     const row = rows[i] || [];
-    const nextRow = rows[i+1] || [];
     let timeCol = -1;
-    for (let c = 0; c < nextRow.length; c++) {
-      if (isTime(clean(nextRow[c])) && !clean(row[c])) { timeCol = c; break; }
+    for (let look = 1; look <= 2 && timeCol === -1; look++) {
+      const nextRow = rows[i+look] || [];
+      for (let c = 0; c < nextRow.length; c++) {
+        if (isTime(clean(nextRow[c])) && !clean(row[c])) { timeCol = c; break; }
+      }
     }
     if (timeCol === -1) continue;
     const rooms = [];
@@ -501,7 +516,16 @@ function parseDay(rows, dayName, merges){
       }
       const rawHeaderCell = clean((rows[h.rowIndex] || [])[seg.timeCol]);
       let groupName = rawHeaderCell.replace(/^.*,\s*/, "").replace(/שעות\s*$/, "").trim();
-      if (!groupName || groupName.length > 24) groupName = "";
+      if (!groupName || groupName.length > 24 || groupName.includes(",")) {
+        groupName = "";
+        for (let r = h.rowIndex - 1; r >= Math.max(0, h.rowIndex - 6); r--) {
+          const candidate = clean((rows[r] || [])[seg.timeCol]);
+          if (candidate && !candidate.includes(",") && candidate.length <= 24 && !/\d/.test(candidate)) {
+            groupName = candidate;
+            break;
+          }
+        }
+      }
       return { timeCol: seg.timeCol, rooms: seg.rooms, groupName, isFlat: !!h.isFlat, entries };
     }).filter(s => s.entries.length);
 
@@ -616,6 +640,7 @@ async function loadDay(dayIdx, { force=false } = {}){
       const rows = rowData.map(rd => (rd.values || []).map(v => (v && v.formattedValue) || ""));
       const merges = (sheet && sheet.merges) || [];
       cache['__raw_' + day.gid] = rows;
+      cache['__merges_' + day.gid] = merges;
       cache[day.gid] = parseDay(rows, day.name, merges);
     } catch (err) {
       console.error(err);
@@ -678,6 +703,17 @@ function tickClock(){
 document.getElementById('refreshBtn').addEventListener('click', () => {
   const activeBtn = document.querySelector('nav.days button.active') || document.querySelector('nav.days button');
   loadDay(parseInt(activeBtn.dataset.idx,10), { force:true });
+});
+
+document.getElementById('debugBtn').addEventListener('click', () => {
+  const panel = document.getElementById('debugPanel');
+  const activeBtn = document.querySelector('nav.days button.active') || document.querySelector('nav.days button');
+  const day = DAYS[parseInt(activeBtn.dataset.idx,10)];
+  const rows = cache['__raw_' + day.gid] || [];
+  const merges = cache['__merges_' + day.gid] || [];
+  document.getElementById('debugRows').value = rows.map((r,i) => `${i}: ${JSON.stringify(r)}`).join('\n');
+  document.getElementById('debugMerges').value = JSON.stringify(merges, null, 1);
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
 });
 
 buildTabs();
