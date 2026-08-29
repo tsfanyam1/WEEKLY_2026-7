@@ -178,7 +178,7 @@
   }
   .segment.seg-sound{ border-top-color:var(--green); }
   .segment.seg-media{ border-top-color:var(--blue); }
-  .segment.seg-design{ border-top-color:var(--orange); }
+  .segment.seg-design{ border-top-color:var(--orange); grid-column:span 2; }
   .segment.seg-workshop{ border-top-color:var(--red); }
   .segment .seg-title{
     padding:12px 14px;
@@ -188,6 +188,7 @@
     border-bottom:1px solid var(--line);
     background:var(--surface2);
     letter-spacing:0.2px;
+    text-align:center;
   }
   .segment.seg-sound .seg-title{ color:var(--green); }
   .segment.seg-media .seg-title{ color:var(--blue); }
@@ -205,7 +206,6 @@
     width:100%;
     border-collapse:collapse;
     font-size:13px;
-    table-layout:fixed;
   }
   table.grid th{
     text-align:center;
@@ -278,6 +278,7 @@
   }
   .segment.seg-workshop table.grid td.lesson-cell .lesson-box{
     border-color:rgba(217,83,79,0.35);
+    background:var(--red-soft);
   }
   .now-badge{
     display:inline-flex;
