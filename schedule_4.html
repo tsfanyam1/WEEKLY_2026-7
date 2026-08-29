@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מערכת תשפ"ז</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --bg:#14181c;
+    --surface:#1c2127;
+    --surface2:#242b32;
+    --line:rgba(236,231,220,0.10);
+    --line-strong:rgba(236,231,220,0.18);
+    --text:#ece7dc;
+    --muted:#8b93a0;
+    --muted2:#5b636e;
+    --magamot:#c1622e;
+    --magamot-soft:rgba(193,98,46,0.14);
+    --sadnaot:#2e8f82;
+    --sadnaot-soft:rgba(46,143,130,0.14);
+    --danger:#c1622e;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Rubik',sans-serif;
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+  .mono{font-family:'JetBrains Mono',monospace;}
+
+  /* ---------- top bar ---------- */
+  header.top{
+    padding:28px 20px 18px;
+    text-align:center;
+    position:relative;
+  }
+  header.top h1{
+    font-size:22px;
+    font-weight:800;
+    margin:0 0 4px;
+    letter-spacing:0.2px;
+  }
+  header.top .clock{
+    color:var(--muted);
+    font-size:13px;
+  }
+  header.top .clock .time{
+    color:var(--text);
+    font-weight:600;
+  }
+
+  /* day tabs */
+  nav.days{
+    display:flex;
+    justify-content:center;
+    gap:6px;
+    flex-wrap:wrap;
+    padding:0 16px 22px;
+  }
+  nav.days button{
+    appearance:none;
+    border:1px solid var(--line-strong);
+    background:var(--surface);
+    color:var(--muted);
+    font-family:'Rubik',sans-serif;
+    font-size:14px;
+    font-weight:600;
+    padding:9px 20px;
+    border-radius:999px;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  nav.days button:hover{ color:var(--text); border-color:var(--line-strong); }
+  nav.days button.active{
+    background:var(--text);
+    color:var(--bg);
+    border-color:var(--text);
+  }
+  nav.days button .dot{
+    display:inline-block;
+    width:6px;height:6px;border-radius:50%;
+    background:var(--magamot);
+    margin-inline-start:6px;
+    vertical-align:middle;
+    opacity:0;
+  }
+  nav.days button.today .dot{ opacity:1; }
+  nav.days button.today.active .dot{ background:var(--bg); }
+
+  main{
+    max-width:1180px;
+    margin:0 auto;
+    padding:0 16px;
+  }
+
+  /* status states */
+  .state-box{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--muted);
+  }
+  .state-box .spinner{
+    width:26px;height:26px;
+    border-radius:50%;
+    border:3px solid var(--line-strong);
+    border-top-color:var(--magamot);
+    margin:0 auto 16px;
+    animation:spin 0.9s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .state-box button.retry{
+    margin-top:14px;
+    background:var(--surface2);
+    color:var(--text);
+    border:1px solid var(--line-strong);
+    padding:9px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    font-family:'Rubik',sans-serif;
+    font-weight:600;
+  }
+
+  /* ---------- blocks ---------- */
+  section.block{
+    margin-bottom:34px;
+  }
+  .block-head{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    margin:0 0 14px;
+    padding-inline-start:2px;
+  }
+  .block-head .bar{
+    width:4px;height:20px;border-radius:2px;
+  }
+  .block-head h2{
+    font-size:17px;
+    font-weight:800;
+    margin:0;
+  }
+  .block-head .grade{
+    font-size:13px;
+    font-weight:600;
+    color:var(--muted);
+  }
+  .type-magamot .bar{ background:var(--magamot); }
+  .type-magamot .grade{ color:var(--magamot); }
+  .type-sadnaot .bar{ background:var(--sadnaot); }
+  .type-sadnaot .grade{ color:var(--sadnaot); }
+
+  .segments{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));
+    gap:14px;
+  }
+  .segment{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    overflow:hidden;
+  }
+  .segment .seg-title{
+    padding:11px 14px;
+    font-size:13px;
+    font-weight:700;
+    color:var(--muted);
+    border-bottom:1px solid var(--line);
+    background:var(--surface2);
+  }
+  table.grid{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  table.grid th{
+    text-align:center;
+    font-weight:700;
+    color:var(--muted);
+    font-size:11.5px;
+    padding:8px 6px;
+    border-bottom:1px solid var(--line);
+    background:var(--surface2);
+    white-space:nowrap;
+  }
+  table.grid td{
+    text-align:center;
+    padding:8px 6px;
+    border-bottom:1px solid var(--line);
+    vertical-align:middle;
+    color:var(--text);
+  }
+  table.grid tr:last-child td{ border-bottom:none; }
+  table.grid td.time{
+    color:var(--muted);
+    font-weight:600;
+    white-space:nowrap;
+    width:1%;
+  }
+  table.grid td.empty{ color:var(--muted2); }
+  table.grid tr.note-row td{
+    color:var(--muted);
+    font-style:normal;
+    font-size:12px;
+    padding:6px;
+    background:rgba(236,231,220,0.03);
+  }
+  table.grid tr.now-row td{
+    background:var(--magamot-soft);
+  }
+  .type-sadnaot table.grid tr.now-row td{
+    background:var(--sadnaot-soft);
+  }
+  .now-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-size:10.5px;
+    font-weight:700;
+    margin-inline-end:6px;
+    color:var(--magamot);
+  }
+  .type-sadnaot .now-badge{ color:var(--sadnaot); }
+  .now-badge .pulse{
+    width:6px;height:6px;border-radius:50%;
+    background:currentColor;
+    animation:pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%{ opacity:0.4; transform:scale(0.7); }
+  }
+
+  footer.credit{
+    text-align:center;
+    color:var(--muted2);
+    font-size:11.5px;
+    margin-top:30px;
+    padding:0 20px;
+  }
+  footer.credit button{
+    background:none;
+    border:none;
+    color:var(--muted);
+    text-decoration:underline;
+    cursor:pointer;
+    font-family:'Rubik',sans-serif;
+    font-size:11.5px;
+  }
+
+  @media (max-width:520px){
+    header.top h1{ font-size:19px; }
+    .segments{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>מערכת שבועית</h1>
+  <div class="clock">היום <span id="todayLabel">–</span> · השעה <span class="time mono" id="clockTime">--:--</span></div>
+</header>
+
+<nav class="days" id="dayTabs"></nav>
+
+<main id="main">
+  <div class="state-box" id="stateBox">
+    <div class="spinner"></div>
+    טוען מערכת...
+  </div>
+</main>
+
+<footer class="credit">
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button>
+</footer>
+
+<script>
+/* ---------------- CONFIG ---------------- */
+const SPREADSHEET_ID = "1LRUToXyJVqRTDfXS7dm9OQ26IVbie8o3lIYmpFwOHTU";
+const DAYS = [
+  { name: "ראשון",  gid: "0" },
+  { name: "שני",    gid: "732496766" },
+  { name: "שלישי",  gid: "1363954582" },
+  { name: "רביעי",  gid: "545634015" },
+  { name: "חמישי",  gid: "987180767" },
+];
+// fallback grade mapping, used only if a block's own label can't be read from the sheet
+const FALLBACK_GRADES = {
+  "ראשון": { "מגמות": "ט'-י'",   "סדנאות": "י\"א-י\"ב" },
+  "שני":   { "מגמות": "ט'-י'",   "סדנאות": "י\"א-י\"ב" },
+  "שלישי": { "מגמות": "י\"א-י\"ב", "סדנאות": "ט'-י'" },
+  "רביעי": { "מגמות": "י\"א-י\"ב", "סדנאות": "ט'-י'" },
+  "חמישי": { "מגמות": "י\"א-י\"ב", "סדנאות": "ט'-י'" },
+};
+const NOTE_WORDS = ["הפסקה","זמן סידור","מעגל סוף יום","הסעות"];
+const JS_DAY_TO_NAME = {0:"ראשון",1:"שני",2:"שלישי",3:"רביעי",4:"חמישי",5:"שישי",6:"שבת"};
+
+const cache = {}; // gid -> parsed blocks
+
+/* ---------------- helpers ---------------- */
+function clean(v){ return (v==null ? "" : String(v)).replace(/\u00a0/g," ").replace(/\s+/g," ").trim(); }
+function isTime(v){ return /^\d{1,2}:\d{2}$/.test(v); }
+function csvUrl(gid){
+  return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}&_=${Date.now()}`;
+}
+
+/* ---------------- parsing ---------------- */
+function parseDay(rows, dayName){
+  const N = rows.length;
+
+  // 1) "grouped" header rows: contain one or more cells ending in "שעות" (each starts a track/room group)
+  const groupedHeaders = [];
+  rows.forEach((row, i) => {
+    const shaotCols = [];
+    row.forEach((c, ci) => { if (/שעות\s*$/.test(clean(c))) shaotCols.push(ci); });
+    if (!shaotCols.length) return;
+    const segments = shaotCols.map((timeCol, k) => {
+      const endCol = k + 1 < shaotCols.length ? shaotCols[k+1] : row.length;
+      const rooms = [];
+      for (let c = timeCol + 1; c < endCol; c++) {
+        const name = clean(row[c]);
+        if (name) rooms.push({ col: c, name });
+      }
+      return { timeCol, rooms };
+    }).filter(s => s.rooms.length);
+    if (segments.length) groupedHeaders.push({ rowIndex: i, segments });
+  });
+  const claimed = new Set(groupedHeaders.map(g => g.rowIndex));
+
+  // 2) "flat" header rows: room names listed directly, with a single implied time column
+  //    (detected because the row itself is blank in that column while the NEXT row holds a time there)
+  const flatHeaders = [];
+  for (let i = 0; i < N; i++) {
+    if (claimed.has(i)) continue;
+    const row = rows[i] || [];
+    const nextRow = rows[i+1] || [];
+    let timeCol = -1;
+    for (let c = 0; c < nextRow.length; c++) {
+      if (isTime(clean(nextRow[c])) && !clean(row[c])) { timeCol = c; break; }
+    }
+    if (timeCol === -1) continue;
+    const rooms = [];
+    row.forEach((c, ci) => {
+      if (ci === timeCol) return;
+      const val = clean(c);
+      if (!val || isTime(val)) return;
+      if (NOTE_WORDS.some(w => val.includes(w))) return;
+      rooms.push({ col: ci, name: val });
+    });
+    if (rooms.length >= 2) flatHeaders.push({ rowIndex: i, segments: [{ timeCol, rooms }] });
+  }
+
+  const allHeaders = [...groupedHeaders, ...flatHeaders].sort((a,b) => a.rowIndex - b.rowIndex);
+
+  // 3) type + grade labels can appear anywhere (often glued onto other text): "יום מגמות \ ט'-י'" etc.
+  const labels = [];
+  rows.forEach((row, i) => {
+    row.forEach(c => {
+      const m = clean(c).match(/יום\s+(מגמות|סדנאות)\s*\\\s*(\S+)/);
+      if (m) labels.push({ rowIndex: i, type: m[1], grade: m[2] });
+    });
+  });
+  labels.sort((a,b) => a.rowIndex - b.rowIndex);
+
+  // 4) build each block: extent, label, and per-segment timelines
+  const blocks = allHeaders.map((h, idx) => {
+    const nextHeaderRow = allHeaders[idx+1] ? allHeaders[idx+1].rowIndex : N;
+    let end = h.rowIndex;
+    let blankRun = 0;
+    for (let r = h.rowIndex + 1; r < nextHeaderRow; r++) {
+      const rowVals = rows[r] || [];
+      const blank = rowVals.every(c => !clean(c));
+      if (blank) { blankRun++; if (blankRun >= 2) break; }
+      else blankRun = 0;
+      end = r;
+    }
+
+    const label = labels[idx] || {};
+    const type = label.type || (idx === 0 ? "מגמות" : "סדנאות");
+    const grade = label.grade || (FALLBACK_GRADES[dayName] || {})[type] || "";
+
+    const segments = h.segments.map(seg => {
+      const entries = [];
+      for (let r = h.rowIndex + 1; r <= end; r++) {
+        const rowVals = rows[r] || [];
+        const timeVal = clean(rowVals[seg.timeCol]);
+        const cells = seg.rooms.map(rm => ({ name: rm.name, text: clean(rowVals[rm.col]) }));
+        const anyContent = timeVal || cells.some(c => c.text);
+        if (!anyContent) continue;
+        const nonEmpty = cells.filter(c => c.text);
+        let note = null;
+        if (nonEmpty.length <= 1) {
+          const candidate = nonEmpty[0] ? nonEmpty[0].text : timeVal;
+          const w = NOTE_WORDS.find(w => (candidate||"").includes(w));
+          if (w) note = w;
+        }
+        entries.push({ time: timeVal, cells, note });
+      }
+      return { timeCol: seg.timeCol, rooms: seg.rooms, groupName: "", entries };
+    }).filter(s => s.entries.length);
+
+    return { type, grade, segments };
+  }).filter(b => b.segments.length);
+
+  return blocks;
+}
+
+/* ---------------- rendering ---------------- */
+function timeToMinutes(t){
+  const m = t.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  return parseInt(m[1],10)*60 + parseInt(m[2],10);
+}
+
+function renderBlocks(blocks, isToday, nowMinutes){
+  return blocks.map(block => {
+    const typeClass = block.type === "סדנאות" ? "type-sadnaot" : "type-magamot";
+    const segmentsHtml = block.segments.map(seg => {
+      // figure out "now" row index (latest entry whose time <= now, before the next entry's time)
+      let nowIdx = -1;
+      if (isToday && nowMinutes != null) {
+        seg.entries.forEach((e, i) => {
+          const t = timeToMinutes(e.time);
+          if (t != null && t <= nowMinutes) nowIdx = i;
+        });
+      }
+      const rowsHtml = seg.entries.map((e, i) => {
+        const isNow = i === nowIdx;
+        if (e.note) {
+          return `<tr class="note-row${isNow?' now-row':''}"><td colspan="${seg.rooms.length+1}">${isNow?'<span class="now-badge"><span class="pulse"></span>עכשיו</span>':''}${e.note}</td></tr>`;
+        }
+        const cellsHtml = e.cells.map(c => `<td class="${c.text?'':'empty'}">${c.text || '—'}</td>`).join('');
+        return `<tr class="${isNow?'now-row':''}"><td class="time mono">${isNow?'<span class="now-badge"><span class="pulse"></span></span>':''}${e.time||''}</td>${cellsHtml}</tr>`;
+      }).join('');
+
+      if (!seg.entries.length) return '';
+
+      return `<div class="segment">
+        ${seg.groupName ? `<div class="seg-title">${seg.groupName}</div>` : ''}
+        <table class="grid">
+          <thead><tr><th></th>${seg.rooms.map(r=>`<th>${r.name}</th>`).join('')}</tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+
+    return `<section class="block ${typeClass}">
+      <div class="block-head">
+        <span class="bar"></span>
+        <h2>${block.type || 'לוח יום'}</h2>
+        <span class="grade">${block.grade || ''}</span>
+      </div>
+      <div class="segments">${segmentsHtml}</div>
+    </section>`;
+  }).join('');
+}
+
+/* ---------------- fetch + orchestration ---------------- */
+async function loadDay(dayIdx, { force=false } = {}){
+  const day = DAYS[dayIdx];
+  const main = document.getElementById('main');
+  const stateBox = `<div class="state-box" id="stateBox"><div class="spinner"></div>טוען את יום ${day.name}...</div>`;
+
+  if (!cache[day.gid] || force) {
+    main.innerHTML = stateBox;
+    try {
+      const res = await fetch(csvUrl(day.gid), { cache: 'no-store' });
+      if (!res.ok) throw new Error('bad status ' + res.status);
+      const text = await res.text();
+      const parsed = Papa.parse(text, { skipEmptyLines: false });
+      const rows = parsed.data;
+      cache['__raw_' + day.gid] = rows;
+      cache[day.gid] = parseDay(rows, day.name);
+    } catch (err) {
+      console.error(err);
+      main.innerHTML = `<div class="state-box">
+        לא הצלחתי לטעון את יום ${day.name} כרגע.<br>
+        ודא שהשיטס משותף כ"כל מי שיש לו את הקישור - צפייה", או שאין חיבור לאינטרנט.
+        <br><button class="retry" onclick="loadDay(${dayIdx}, {force:true})">נסה שוב</button>
+      </div>`;
+      return;
+    }
+  }
+
+  const now = new Date();
+  const todayName = JS_DAY_TO_NAME[now.getDay()];
+  const isToday = todayName === day.name;
+  const nowMinutes = now.getHours()*60 + now.getMinutes();
+
+  const blocks = cache[day.gid];
+  if (!blocks.length) {
+    const raw = cache['__raw_' + day.gid] || [];
+    const dump = raw.slice(0, 40).map((r,i) => `${i}: ${JSON.stringify(r)}`).join('\n');
+    main.innerHTML = `<div class="state-box" style="text-align:right;direction:ltr">
+      <div style="direction:rtl;text-align:center;margin-bottom:14px">לא נמצאו נתונים ליום ${day.name}. יש לי כאן את השורות הגולמיות שהתקבלו - העתק את הכל ושלח לי:</div>
+      <textarea readonly style="width:100%;height:340px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:11px" onclick="this.select()">${dump}</textarea>
+    </div>`;
+    return;
+  }
+  main.innerHTML = renderBlocks(blocks, isToday, nowMinutes);
+}
+
+function buildTabs(){
+  const nav = document.getElementById('dayTabs');
+  const now = new Date();
+  const todayName = JS_DAY_TO_NAME[now.getDay()];
+  nav.innerHTML = DAYS.map((d,i) => `<button data-idx="${i}" class="${d.name===todayName?'today':''}">${d.name}<span class="dot"></span></button>`).join('');
+  nav.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      nav.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      loadDay(parseInt(btn.dataset.idx,10));
+    });
+  });
+}
+
+function pickInitialDay(){
+  const now = new Date();
+  const todayName = JS_DAY_TO_NAME[now.getDay()];
+  const idx = DAYS.findIndex(d => d.name === todayName);
+  return idx === -1 ? 0 : idx;
+}
+
+function tickClock(){
+  const now = new Date();
+  document.getElementById('todayLabel').textContent = JS_DAY_TO_NAME[now.getDay()];
+  document.getElementById('clockTime').textContent =
+    String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+}
+
+document.getElementById('refreshBtn').addEventListener('click', () => {
+  const activeBtn = document.querySelector('nav.days button.active') || document.querySelector('nav.days button');
+  loadDay(parseInt(activeBtn.dataset.idx,10), { force:true });
+});
+
+buildTabs();
+tickClock();
+setInterval(tickClock, 30000);
+const initialIdx = pickInitialDay();
+const initialBtn = document.querySelector(`nav.days button[data-idx="${initialIdx}"]`);
+if (initialBtn) initialBtn.classList.add('active');
+loadDay(initialIdx);
+</script>
+
+</body>
+</html>
