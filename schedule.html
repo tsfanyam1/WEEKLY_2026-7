@@ -219,7 +219,8 @@
   }
   table.grid{
     width:100%;
-    border-collapse:collapse;
+    border-collapse:separate;
+    border-spacing:0;
     font-size:13px;
   }
   table.grid th:first-child,
@@ -232,9 +233,6 @@
   table.grid tr.note-row td.time,
   table.grid tr.now-row td.time{
     background:var(--surface);
-  }
-  .segment.seg-workshop table.grid tr.note-row td.time{
-    background:rgba(217,83,79,0.55);
   }
   table.grid th{
     text-align:center;
