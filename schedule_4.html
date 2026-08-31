@@ -428,11 +428,11 @@ const cache = {}; // gid -> parsed blocks
 function clean(v){ return (v==null ? "" : String(v)).replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g,"").replace(/\u00a0/g," ").replace(/\s+/g," ").trim(); }
 function isTime(v){ return /^\d{1,2}:\d{2}$/.test(v); }
 function sheetsApiUrl(dayName){
-  const fields = encodeURIComponent("sheets(data.rowData.values(formattedValue,textFormatRuns),merges)");
+  const fields = encodeURIComponent("sheets(data.rowData.values(formattedValue,textFormatRuns,effectiveFormat.textFormat.bold),merges)");
   return `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?ranges=${encodeURIComponent(dayName)}&includeGridData=true&fields=${fields}&key=${API_KEY}`;
 }
 function escHtml(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-function formatCellHtml(rawText, runs){
+function formatCellHtml(rawText, runs, baseBold){
   if (!rawText) return "";
   const text = String(rawText).replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g,"").replace(/\u00a0/g," ");
   const segs = [];
@@ -440,10 +440,12 @@ function formatCellHtml(rawText, runs){
     for (let i = 0; i < runs.length; i++) {
       const start = runs[i].startIndex || 0;
       const end = i+1 < runs.length ? (runs[i+1].startIndex || 0) : text.length;
-      segs.push({ start, end, bold: !!(runs[i].format && runs[i].format.bold) });
+      const fmt = runs[i].format || {};
+      const bold = ('bold' in fmt) ? !!fmt.bold : !!baseBold;
+      segs.push({ start, end, bold });
     }
   } else {
-    segs.push({ start: 0, end: text.length, bold: false });
+    segs.push({ start: 0, end: text.length, bold: !!baseBold });
   }
   const breaks = [];
   const re = /\s{3,}/g;
@@ -592,7 +594,7 @@ function parseDay(rows, dayName, merges, rawGrid){
             if (!text) return { empty: true, name: rm.name };
             const tl = topLeft.get(key);
             const span = tl ? tl.rowSpan : 1;
-            return { text, span, name: rm.name, rawText: rc.text || "", runs: rc.runs || null };
+            return { text, span, name: rm.name, rawText: rc.text || "", runs: rc.runs || null, baseBold: rc.baseBold };
           });
           const visible = cells.filter(c => c.text);
           let note = null;
@@ -608,7 +610,7 @@ function parseDay(rows, dayName, merges, rawGrid){
           const timeVal = clean(rowVals[seg.timeCol]);
           const cells = seg.rooms.map(rm => {
             const rc = ((rawGrid && rawGrid[r]) || [])[rm.col] || {};
-            return { name: rm.name, text: clean(rowVals[rm.col]), rawText: rc.text || "", runs: rc.runs || null };
+            return { name: rm.name, text: clean(rowVals[rm.col]), rawText: rc.text || "", runs: rc.runs || null, baseBold: rc.baseBold };
           });
           const anyContent = timeVal || cells.some(c => c.text);
           if (!anyContent) continue;
@@ -674,7 +676,7 @@ function renderNormalRows(seg, isToday, nowMinutes){
     if (e.note) {
       return `<tr class="note-row${isNow?' now-row':''}">${timeTd}<td colspan="${seg.rooms.length}"><span class="pill">${e.note}</span></td></tr>`;
     }
-    const cellsHtml = e.cells.map(c => `<td class="${c.text?'':'empty'}">${c.text ? formatCellHtml(c.rawText, c.runs) : ''}</td>`).join('');
+    const cellsHtml = e.cells.map(c => `<td class="${c.text?'':'empty'}">${c.text ? formatCellHtml(c.rawText, c.runs, c.baseBold) : ''}</td>`).join('');
     return `<tr class="${isNow?'now-row':''}">${timeTd}${cellsHtml}</tr>`;
   }).join('');
 }
@@ -701,7 +703,7 @@ function renderFlatRows(seg, isToday, nowMinutes, tidyInfo){
     e.cells.forEach(c => {
       if (c.skip) return;
       if (c.empty) { tds += `<td class="empty"></td>`; return; }
-      tds += `<td class="lesson-cell" rowspan="${c.span}"><div class="lesson-box"><div class="lesson-inner">${formatCellHtml(c.rawText, c.runs)}</div></div></td>`;
+      tds += `<td class="lesson-cell" rowspan="${c.span}"><div class="lesson-box"><div class="lesson-inner">${formatCellHtml(c.rawText, c.runs, c.baseBold)}</div></div></td>`;
     });
     return `<tr class="${isNow?'now-row':''}">${tds}</tr>`;
   }).join('');
@@ -749,7 +751,7 @@ async function loadDay(dayIdx, { force=false } = {}){
       const sheet = (json.sheets || [])[0];
       const rowData = (sheet && sheet.data && sheet.data[0] && sheet.data[0].rowData) || [];
       const rows = rowData.map(rd => (rd.values || []).map(v => (v && v.formattedValue) || ""));
-      const rawGrid = rowData.map(rd => (rd.values || []).map(v => ({ text: (v && v.formattedValue) || "", runs: (v && v.textFormatRuns) || null })));
+      const rawGrid = rowData.map(rd => (rd.values || []).map(v => ({ text: (v && v.formattedValue) || "", runs: (v && v.textFormatRuns) || null, baseBold: !!(v && v.effectiveFormat && v.effectiveFormat.textFormat && v.effectiveFormat.textFormat.bold) })));
       const merges = (sheet && sheet.merges) || [];
       cache['__raw_' + day.gid] = rows;
       cache['__merges_' + day.gid] = merges;
@@ -830,7 +832,7 @@ document.getElementById('debugBtn').addEventListener('click', () => {
   const runsLines = [];
   rawGrid.forEach((row, ri) => {
     row.forEach((cell, ci) => {
-      if (cell && cell.text) runsLines.push(`[${ri},${ci}] "${cell.text}" runs=${JSON.stringify(cell.runs)}`);
+      if (cell && cell.text) runsLines.push(`[${ri},${ci}] "${cell.text}" baseBold=${cell.baseBold} runs=${JSON.stringify(cell.runs)}`);
     });
   });
   document.getElementById('debugRuns').value = runsLines.join('\n');
