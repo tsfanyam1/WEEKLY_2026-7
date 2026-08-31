@@ -234,6 +234,12 @@
   table.grid tr.now-row td.time{
     background:var(--surface);
   }
+  table.grid tr.tidy-row td.time{
+    position:sticky !important;
+    right:0 !important;
+    z-index:3;
+    background:var(--surface);
+  }
   table.grid th{
     text-align:center;
     font-weight:700;
@@ -446,7 +452,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <span style="opacity:0.5">v4</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
