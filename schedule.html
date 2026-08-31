@@ -213,10 +213,28 @@
   .segment.seg-media .now-badge{ color:var(--blue); }
   .segment.seg-design .now-badge{ color:var(--orange); }
   .segment.seg-workshop .now-badge{ color:var(--red); }
+  .table-scroll{
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
   table.grid{
     width:100%;
     border-collapse:collapse;
     font-size:13px;
+  }
+  table.grid th:first-child,
+  table.grid td.time{
+    position:sticky;
+    right:0;
+    background:var(--surface2);
+    z-index:2;
+  }
+  table.grid tr.note-row td.time,
+  table.grid tr.now-row td.time{
+    background:var(--surface);
+  }
+  .segment.seg-workshop table.grid tr.note-row td.time{
+    background:rgba(217,83,79,0.55);
   }
   table.grid th{
     text-align:center;
@@ -613,8 +631,8 @@ function parseDay(rows, dayName, merges, rawGrid){
       let bannerRow = -1, tidyColIdx = -1;
       for (let r = h.rowIndex; r <= h.rowIndex + 3 && bannerRow === -1; r++) {
         const row = rows[r] || [];
-        const idx = row.findIndex(c => NOTE_WORDS.some(w => clean(c).includes(w)));
-        if (idx !== -1) { bannerRow = r; tidyColIdx = idx; }
+        const idx2 = row.findIndex(c => NOTE_WORDS.some(w => clean(c).includes(w)));
+        if (idx2 !== -1) { bannerRow = r; tidyColIdx = idx2; }
       }
       if (bannerRow !== -1) {
         const tidyLabel = clean((rows[bannerRow] || [])[tidyColIdx]);
@@ -768,10 +786,12 @@ function renderBlocks(blocks, isToday, nowMinutes){
       const rowsHtml = seg.isFlat ? renderFlatRows(seg, isToday, nowMinutes, block.tidyInfo) : renderNormalRows(seg, isToday, nowMinutes);
       return `<div class="segment ${cls}">
         ${seg.groupName ? `<div class="seg-title">${seg.groupName}</div>` : ''}
-        <table class="grid">
+        <div class="table-scroll">
+        <table class="grid" style="min-width:${Math.max(320, seg.rooms.length*76 + 56)}px">
           <thead><tr><th></th>${seg.rooms.map(r=>`<th>${r.name}</th>`).join('')}</tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
+        </div>
       </div>`;
     }).join('');
 
