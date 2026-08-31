@@ -254,6 +254,18 @@
     border-radius:999px;
     padding:3px 12px;
   }
+  .segment.seg-workshop table.grid tr.note-row:not(.tidy-row) td{
+    background:rgba(217,83,79,0.35);
+    padding:10px 6px;
+  }
+  .segment.seg-workshop table.grid tr.note-row:not(.tidy-row) td > span.pill{
+    background:transparent;
+    border:none;
+    color:var(--text);
+    font-weight:700;
+    font-size:12.5px;
+    padding:0;
+  }
   table.tidy-table{
     width:100%;
     border-collapse:collapse;
@@ -393,6 +405,12 @@ const FALLBACK_GRADES = {
   "חמישי": { "מגמות": "י\"א-י\"ב", "סדנאות": "ט'-י'" },
 };
 const NOTE_WORDS = ["הפסקה","זמן סידור","מעגל סוף יום","הסעות"];
+function isNoteText(t){
+  if (!t) return false;
+  if (NOTE_WORDS.some(w => t.includes(w))) return true;
+  if (/^מעגל/.test(t)) return true;
+  return false;
+}
 const JS_DAY_TO_NAME = {0:"ראשון",1:"שני",2:"שלישי",3:"רביעי",4:"חמישי",5:"שישי",6:"שבת"};
 
 const cache = {}; // gid -> parsed blocks
@@ -539,8 +557,7 @@ function parseDay(rows, dayName, merges){
           let note = null;
           if (visible.length <= 1) {
             const candidate = visible[0] ? visible[0].text : timeVal;
-            const w = NOTE_WORDS.find(w => (candidate||"").includes(w));
-            if (w) note = w;
+            if (isNoteText(candidate)) note = candidate;
           }
           entries.push({ time: timeVal, cells, note });
         }
@@ -555,8 +572,7 @@ function parseDay(rows, dayName, merges){
           let note = null;
           if (nonEmpty.length <= 1) {
             const candidate = nonEmpty[0] ? nonEmpty[0].text : timeVal;
-            const w = NOTE_WORDS.find(w => (candidate||"").includes(w));
-            if (w) note = w;
+            if (isNoteText(candidate)) note = candidate;
           }
           entries.push({ time: timeVal, cells, note });
         }
