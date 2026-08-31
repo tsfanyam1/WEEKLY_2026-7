@@ -170,7 +170,7 @@
     gap:14px;
   }
   .type-magamot .segments{
-    grid-template-columns: 1.15fr 1.15fr 1.35fr;
+    grid-template-columns: 1.1fr 1.1fr 1.4fr;
   }
   .segment{
     background:var(--surface);
@@ -243,6 +243,7 @@
   .segment.seg-media table.grid th:not(:first-child), .segment.seg-media table.grid td:not(:first-child){ border-inline-start-color:rgba(91,155,217,0.35); }
   .segment.seg-design table.grid th:not(:first-child), .segment.seg-design table.grid td:not(:first-child){ border-inline-start-color:rgba(224,151,63,0.35); }
   .segment.seg-workshop table.grid th:not(:first-child), .segment.seg-workshop table.grid td:not(:first-child){ border-inline-start-color:rgba(217,83,79,0.35); }
+  table.grid td b{ font-weight:700; }
   table.grid td.empty{ color:transparent; }
   table.grid td.empty::after{ content:"·"; color:var(--muted2); }
   table.grid tr.note-row td{
@@ -423,8 +424,39 @@ const cache = {}; // gid -> parsed blocks
 function clean(v){ return (v==null ? "" : String(v)).replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g,"").replace(/\u00a0/g," ").replace(/\s+/g," ").trim(); }
 function isTime(v){ return /^\d{1,2}:\d{2}$/.test(v); }
 function sheetsApiUrl(dayName){
-  const fields = encodeURIComponent("sheets(data.rowData.values.formattedValue,merges)");
+  const fields = encodeURIComponent("sheets(data.rowData.values(formattedValue,textFormatRuns),merges)");
   return `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?ranges=${encodeURIComponent(dayName)}&includeGridData=true&fields=${fields}&key=${API_KEY}`;
+}
+function escHtml(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function formatCellHtml(rawText, runs){
+  if (!rawText) return "";
+  const text = String(rawText).replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g,"").replace(/\u00a0/g," ");
+  const segs = [];
+  if (runs && runs.length) {
+    for (let i = 0; i < runs.length; i++) {
+      const start = runs[i].startIndex || 0;
+      const end = i+1 < runs.length ? (runs[i+1].startIndex || 0) : text.length;
+      segs.push({ start, end, bold: !!(runs[i].format && runs[i].format.bold) });
+    }
+  } else {
+    segs.push({ start: 0, end: text.length, bold: false });
+  }
+  const breaks = [];
+  const re = /\s{3,}/g;
+  let m;
+  while ((m = re.exec(text))) breaks.push([m.index, m.index + m[0].length]);
+  let html = "";
+  segs.forEach(seg => {
+    let pos = seg.start;
+    while (pos < seg.end) {
+      const br = breaks.find(b => b[0] >= pos && b[0] < seg.end);
+      const segTextEnd = br ? br[0] : seg.end;
+      const chunk = escHtml(text.slice(pos, segTextEnd)).replace(/\n+/g, "<br>");
+      if (chunk) html += seg.bold ? `<b>${chunk}</b>` : chunk;
+      if (br) { html += "<br><br>"; pos = br[1]; } else pos = segTextEnd;
+    }
+  });
+  return html.replace(/^(<br>)+/,"").replace(/(<br>)+$/,"");
 }
 function buildMergeMaps(merges){
   const topLeft = new Map();
@@ -443,7 +475,7 @@ function buildMergeMaps(merges){
 }
 
 /* ---------------- parsing ---------------- */
-function parseDay(rows, dayName, merges){
+function parseDay(rows, dayName, merges, rawGrid){
   const N = rows.length;
   const { topLeft, covered } = buildMergeMaps(merges);
 
@@ -550,12 +582,13 @@ function parseDay(rows, dayName, merges){
           const timeVal = clean(rowVals[seg.timeCol]);
           const cells = seg.rooms.map(rm => {
             const key = `${r}_${rm.col}`;
+            const rc = ((rawGrid && rawGrid[r]) || [])[rm.col] || {};
             if (covered.has(key)) return { skip: true, name: rm.name };
             const text = clean(rowVals[rm.col]);
             if (!text) return { empty: true, name: rm.name };
             const tl = topLeft.get(key);
             const span = tl ? tl.rowSpan : 1;
-            return { text, span, name: rm.name };
+            return { text, span, name: rm.name, rawText: rc.text || "", runs: rc.runs || null };
           });
           const visible = cells.filter(c => c.text);
           let note = null;
@@ -569,7 +602,10 @@ function parseDay(rows, dayName, merges){
         for (let r = h.rowIndex + 1; r <= end; r++) {
           const rowVals = rows[r] || [];
           const timeVal = clean(rowVals[seg.timeCol]);
-          const cells = seg.rooms.map(rm => ({ name: rm.name, text: clean(rowVals[rm.col]) }));
+          const cells = seg.rooms.map(rm => {
+            const rc = ((rawGrid && rawGrid[r]) || [])[rm.col] || {};
+            return { name: rm.name, text: clean(rowVals[rm.col]), rawText: rc.text || "", runs: rc.runs || null };
+          });
           const anyContent = timeVal || cells.some(c => c.text);
           if (!anyContent) continue;
           const nonEmpty = cells.filter(c => c.text);
@@ -634,7 +670,7 @@ function renderNormalRows(seg, isToday, nowMinutes){
     if (e.note) {
       return `<tr class="note-row${isNow?' now-row':''}">${timeTd}<td colspan="${seg.rooms.length}"><span class="pill">${e.note}</span></td></tr>`;
     }
-    const cellsHtml = e.cells.map(c => `<td class="${c.text?'':'empty'}">${c.text || ''}</td>`).join('');
+    const cellsHtml = e.cells.map(c => `<td class="${c.text?'':'empty'}">${c.text ? formatCellHtml(c.rawText, c.runs) : ''}</td>`).join('');
     return `<tr class="${isNow?'now-row':''}">${timeTd}${cellsHtml}</tr>`;
   }).join('');
 }
@@ -661,7 +697,7 @@ function renderFlatRows(seg, isToday, nowMinutes, tidyInfo){
     e.cells.forEach(c => {
       if (c.skip) return;
       if (c.empty) { tds += `<td class="empty"></td>`; return; }
-      tds += `<td class="lesson-cell" rowspan="${c.span}"><div class="lesson-box">${c.text}</div></td>`;
+      tds += `<td class="lesson-cell" rowspan="${c.span}"><div class="lesson-box">${formatCellHtml(c.rawText, c.runs)}</div></td>`;
     });
     return `<tr class="${isNow?'now-row':''}">${tds}</tr>`;
   }).join('');
@@ -709,10 +745,11 @@ async function loadDay(dayIdx, { force=false } = {}){
       const sheet = (json.sheets || [])[0];
       const rowData = (sheet && sheet.data && sheet.data[0] && sheet.data[0].rowData) || [];
       const rows = rowData.map(rd => (rd.values || []).map(v => (v && v.formattedValue) || ""));
+      const rawGrid = rowData.map(rd => (rd.values || []).map(v => ({ text: (v && v.formattedValue) || "", runs: (v && v.textFormatRuns) || null })));
       const merges = (sheet && sheet.merges) || [];
       cache['__raw_' + day.gid] = rows;
       cache['__merges_' + day.gid] = merges;
-      cache[day.gid] = parseDay(rows, day.name, merges);
+      cache[day.gid] = parseDay(rows, day.name, merges, rawGrid);
     } catch (err) {
       console.error(err);
       main.innerHTML = `<div class="state-box">
