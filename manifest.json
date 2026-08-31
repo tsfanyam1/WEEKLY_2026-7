@@ -2,7 +2,7 @@
   "name": "מערכת שבועית",
   "short_name": "מערכת",
   "description": "מערכת שבועית - מגמות וסדנאות",
-  "start_url": "./index.html",
+  "start_url": "./schedule.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

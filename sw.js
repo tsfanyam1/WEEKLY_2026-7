@@ -1,6 +1,6 @@
 const CACHE_NAME = 'schedule-shell-v1';
 const SHELL_FILES = [
-  './index.html',
+  './schedule.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'
