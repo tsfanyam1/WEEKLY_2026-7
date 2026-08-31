@@ -273,6 +273,14 @@
     text-align:center;
     color:var(--text);
   }
+  table.tidy-table th.tidy-banner{
+    background:var(--red-soft);
+    color:var(--red);
+    font-weight:800;
+    font-size:11.5px;
+    padding:6px 4px;
+    border-bottom:1px solid rgba(217,83,79,0.35);
+  }
   tr.tidy-row td{ padding:8px 6px; }
   table.grid tr.now-row td{
     background:rgba(236,231,220,0.08);
@@ -296,9 +304,12 @@
     font-size:12.5px;
     line-height:1.3;
   }
+  .segment.seg-workshop table.grid td.lesson-cell{
+    padding:2px;
+  }
   .segment.seg-workshop table.grid td.lesson-cell .lesson-box{
-    border-color:rgba(217,83,79,0.35);
-    background:var(--red-soft);
+    border-color:rgba(217,83,79,0.6);
+    background:rgba(217,83,79,0.32);
   }
   .now-badge{
     display:inline-flex;
@@ -499,6 +510,7 @@ function parseDay(rows, dayName, merges){
       const headerRow = rows[h.rowIndex] || [];
       const tidyColIdx = headerRow.findIndex(c => NOTE_WORDS.some(w => clean(c).includes(w)));
       if (tidyColIdx !== -1) {
+        const tidyLabel = clean(headerRow[tidyColIdx]);
         const subHeaderRow = rows[h.rowIndex+1] || [];
         const valueRow = rows[h.rowIndex+2] || [];
         const items = [];
@@ -507,7 +519,7 @@ function parseDay(rows, dayName, merges){
           if (!lbl) { if (items.length) break; else continue; }
           items.push({ label: lbl, value: clean(valueRow[c]) });
         }
-        if (items.length) tidyInfo = items;
+        if (items.length) tidyInfo = { title: tidyLabel, items };
       }
     }
 
@@ -623,7 +635,7 @@ function renderFlatRows(seg, isToday, nowMinutes, tidyInfo){
     const timeTd = `<td class="time mono">${isNow?'<span class="now-badge"><span class="pulse"></span></span>':''}${e.time||''}</td>`;
     if (e.note) {
       if (tidyInfo && e.note.includes("זמן סידור")) {
-        const tidyHtml = `<table class="tidy-table"><tr>${tidyInfo.map(t=>`<th>${t.label}</th>`).join('')}</tr><tr>${tidyInfo.map(t=>`<td>${t.value||''}</td>`).join('')}</tr></table>`;
+        const tidyHtml = `<table class="tidy-table"><tr><th colspan="${tidyInfo.items.length}" class="tidy-banner">${tidyInfo.title}</th></tr><tr>${tidyInfo.items.map(t=>`<th>${t.label}</th>`).join('')}</tr><tr>${tidyInfo.items.map(t=>`<td>${t.value||''}</td>`).join('')}</tr></table>`;
         return `<tr class="note-row tidy-row${isNow?' now-row':''}">${timeTd}<td colspan="${seg.rooms.length}">${tidyHtml}</td></tr>`;
       }
       return `<tr class="note-row${isNow?' now-row':''}">${timeTd}<td colspan="${seg.rooms.length}"><span class="pill">${e.note}</span></td></tr>`;
