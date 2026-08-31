@@ -254,6 +254,26 @@
     border-radius:999px;
     padding:3px 12px;
   }
+  table.tidy-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:10.5px;
+  }
+  table.tidy-table th{
+    background:transparent;
+    color:var(--muted);
+    font-weight:700;
+    padding:4px 3px;
+    border-bottom:1px solid var(--line-strong);
+    text-align:center;
+  }
+  table.tidy-table td{
+    padding:4px 3px;
+    font-weight:600;
+    text-align:center;
+    color:var(--text);
+  }
+  tr.tidy-row td{ padding:8px 6px; }
   table.grid tr.now-row td{
     background:rgba(236,231,220,0.08);
   }
@@ -474,6 +494,23 @@ function parseDay(rows, dayName, merges){
     const type = label.type || (idx === 0 ? "מגמות" : "סדנאות");
     const grade = (FALLBACK_GRADES[dayName] || {})[type] || label.grade || "";
 
+    let tidyInfo = null;
+    if (h.isFlat) {
+      const headerRow = rows[h.rowIndex] || [];
+      const tidyColIdx = headerRow.findIndex(c => NOTE_WORDS.some(w => clean(c).includes(w)));
+      if (tidyColIdx !== -1) {
+        const subHeaderRow = rows[h.rowIndex+1] || [];
+        const valueRow = rows[h.rowIndex+2] || [];
+        const items = [];
+        for (let c = tidyColIdx; c < subHeaderRow.length; c++) {
+          const lbl = clean(subHeaderRow[c]);
+          if (!lbl) { if (items.length) break; else continue; }
+          items.push({ label: lbl, value: clean(valueRow[c]) });
+        }
+        if (items.length) tidyInfo = items;
+      }
+    }
+
     const segments = h.segments.map(seg => {
       const entries = [];
       if (h.isFlat) {
@@ -530,7 +567,7 @@ function parseDay(rows, dayName, merges){
       return { timeCol: seg.timeCol, rooms: seg.rooms, groupName, isFlat: !!h.isFlat, entries };
     }).filter(s => s.entries.length);
 
-    return { type, grade, segments };
+    return { type, grade, tidyInfo, segments };
   }).filter(b => b.segments.length);
 
   blocks.sort((a,b) => (a.type === "מגמות" ? 0 : 1) - (b.type === "מגמות" ? 0 : 1));
@@ -573,7 +610,7 @@ function renderNormalRows(seg, isToday, nowMinutes){
   }).join('');
 }
 
-function renderFlatRows(seg, isToday, nowMinutes){
+function renderFlatRows(seg, isToday, nowMinutes, tidyInfo){
   let nowIdx = -1;
   if (isToday && nowMinutes != null) {
     seg.entries.forEach((e, i) => {
@@ -585,6 +622,10 @@ function renderFlatRows(seg, isToday, nowMinutes){
     const isNow = i === nowIdx;
     const timeTd = `<td class="time mono">${isNow?'<span class="now-badge"><span class="pulse"></span></span>':''}${e.time||''}</td>`;
     if (e.note) {
+      if (tidyInfo && e.note.includes("זמן סידור")) {
+        const tidyHtml = `<table class="tidy-table"><tr>${tidyInfo.map(t=>`<th>${t.label}</th>`).join('')}</tr><tr>${tidyInfo.map(t=>`<td>${t.value||''}</td>`).join('')}</tr></table>`;
+        return `<tr class="note-row tidy-row${isNow?' now-row':''}">${timeTd}<td colspan="${seg.rooms.length}">${tidyHtml}</td></tr>`;
+      }
       return `<tr class="note-row${isNow?' now-row':''}">${timeTd}<td colspan="${seg.rooms.length}"><span class="pill">${e.note}</span></td></tr>`;
     }
     let tds = timeTd;
@@ -603,7 +644,7 @@ function renderBlocks(blocks, isToday, nowMinutes){
     const segmentsHtml = block.segments.map(seg => {
       if (!seg.entries.length) return '';
       const cls = trackClass(seg, block.type);
-      const rowsHtml = seg.isFlat ? renderFlatRows(seg, isToday, nowMinutes) : renderNormalRows(seg, isToday, nowMinutes);
+      const rowsHtml = seg.isFlat ? renderFlatRows(seg, isToday, nowMinutes, block.tidyInfo) : renderNormalRows(seg, isToday, nowMinutes);
       return `<div class="segment ${cls}">
         ${seg.groupName ? `<div class="seg-title">${seg.groupName}</div>` : ''}
         <table class="grid">
