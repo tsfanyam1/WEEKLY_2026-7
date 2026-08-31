@@ -169,6 +169,9 @@
     grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));
     gap:14px;
   }
+  .type-magamot .segments{
+    grid-template-columns: 1.15fr 1.15fr 1.35fr;
+  }
   .segment{
     background:var(--surface);
     border:1px solid var(--line);
@@ -178,7 +181,7 @@
   }
   .segment.seg-sound{ border-top-color:var(--green); }
   .segment.seg-media{ border-top-color:var(--blue); }
-  .segment.seg-design{ border-top-color:var(--orange); grid-column:span 2; }
+  .segment.seg-design{ border-top-color:var(--orange); }
   .segment.seg-workshop{ border-top-color:var(--red); }
   .segment .seg-title{
     padding:12px 14px;
@@ -254,11 +257,11 @@
     border-radius:999px;
     padding:3px 12px;
   }
-  .segment.seg-workshop table.grid tr.note-row:not(.tidy-row) td{
+  .segment.seg-workshop table.grid tr.note-row td{
     background:rgba(217,83,79,0.35);
     padding:10px 6px;
   }
-  .segment.seg-workshop table.grid tr.note-row:not(.tidy-row) td > span.pill{
+  .segment.seg-workshop table.grid tr.note-row td > span.pill{
     background:transparent;
     border:none;
     color:var(--text);
@@ -286,8 +289,8 @@
     color:var(--text);
   }
   table.tidy-table th.tidy-banner{
-    background:var(--red-soft);
-    color:var(--red);
+    background:transparent;
+    color:var(--text);
     font-weight:800;
     font-size:11.5px;
     padding:6px 4px;
@@ -356,6 +359,7 @@
   @media (max-width:520px){
     header.top h1{ font-size:19px; }
     .segments{ grid-template-columns:1fr; }
+    .type-magamot .segments{ grid-template-columns:1fr; }
   }
 </style>
 </head>
