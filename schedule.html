@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>מערכת תשפ"ז</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14181c">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="מערכת">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --bg:#14181c;
+    --surface:#1c2127;
+    --surface2:#242b32;
+    --line:rgba(236,231,220,0.10);
+    --line-strong:rgba(236,231,220,0.18);
+    --text:#ece7dc;
+    --muted:#8b93a0;
+    --muted2:#5b636e;
+    --magamot:#c1622e;
+    --magamot-soft:rgba(193,98,46,0.14);
+    --sadnaot:#2e8f82;
+    --sadnaot-soft:rgba(46,143,130,0.14);
+    --danger:#c1622e;
+    --green:#4caf7d;
+    --green-soft:rgba(76,175,125,0.15);
+    --blue:#5b9bd9;
+    --blue-soft:rgba(91,155,217,0.15);
+    --orange:#e0973f;
+    --orange-soft:rgba(224,151,63,0.15);
+    --red:#d9534f;
+    --red-soft:rgba(217,83,79,0.15);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Rubik',sans-serif;
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+  .mono{font-family:'JetBrains Mono',monospace;}
+
+  /* ---------- top bar ---------- */
+  header.top{
+    padding:28px 20px 18px;
+    text-align:center;
+    position:relative;
+  }
+  header.top h1{
+    font-size:22px;
+    font-weight:800;
+    margin:0 0 4px;
+    letter-spacing:0.2px;
+  }
+  header.top .clock{
+    color:var(--muted);
+    font-size:13px;
+  }
+  header.top .clock .time{
+    color:var(--text);
+    font-weight:600;
+  }
+
+  /* day tabs */
+  nav.days{
+    display:flex;
+    justify-content:center;
+    gap:6px;
+    flex-wrap:wrap;
+    padding:0 16px 22px;
+  }
+  nav.days button{
+    appearance:none;
+    border:1px solid var(--line-strong);
+    background:var(--surface);
+    color:var(--muted);
+    font-family:'Rubik',sans-serif;
+    font-size:14px;
+    font-weight:600;
+    padding:9px 20px;
+    border-radius:999px;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  nav.days button:hover{ color:var(--text); border-color:var(--line-strong); }
+  nav.days button.active{
+    background:var(--text);
+    color:var(--bg);
+    border-color:var(--text);
+  }
+  nav.days button .dot{
+    display:inline-block;
+    width:6px;height:6px;border-radius:50%;
+    background:var(--text);
+    margin-inline-start:6px;
+    vertical-align:middle;
+    opacity:0;
+  }
+  nav.days button.today .dot{ opacity:1; }
+  nav.days button.today.active .dot{ background:var(--bg); }
+
+  main{
+    max-width:1180px;
+    margin:0 auto;
+    padding:0 16px;
+  }
+
+  /* status states */
+  .state-box{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--muted);
+  }
+  .state-box .spinner{
+    width:26px;height:26px;
+    border-radius:50%;
+    border:3px solid var(--line-strong);
+    border-top-color:var(--magamot);
+    margin:0 auto 16px;
+    animation:spin 0.9s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .state-box button.retry{
+    margin-top:14px;
+    background:var(--surface2);
+    color:var(--text);
+    border:1px solid var(--line-strong);
+    padding:9px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    font-family:'Rubik',sans-serif;
+    font-weight:600;
+  }
+
+  /* ---------- blocks ---------- */
+  section.block{
+    margin-bottom:34px;
+  }
+  .block-head{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    margin:0 0 14px;
+    padding-inline-start:2px;
+  }
+  .block-head .bar{
+    width:4px;height:20px;border-radius:2px;
+  }
+  .block-head h2{
+    font-size:17px;
+    font-weight:800;
+    margin:0;
+  }
+  .block-head .grade{
+    font-size:13px;
+    font-weight:600;
+    color:var(--muted);
+  }
+  .type-magamot .bar{ background:var(--text); }
+  .type-magamot .grade{ color:var(--muted); }
+  .type-sadnaot .bar{ background:var(--red); }
+  .type-sadnaot .grade{ color:var(--red); }
+
+  .segments{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));
+    gap:14px;
+  }
+  .type-magamot .segments{
+    grid-template-columns: 1.1fr 1.1fr 1.4fr;
+  }
+  .segment{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-top:3px solid var(--line-strong);
+    border-radius:14px;
+    overflow:hidden;
+  }
+  .segment.seg-sound{ border-top-color:var(--green); }
+  .segment.seg-media{ border-top-color:var(--blue); }
+  .segment.seg-design{ border-top-color:var(--orange); }
+  .segment.seg-workshop{ border-top-color:var(--red); }
+  .segment .seg-title{
+    padding:12px 14px;
+    font-size:14px;
+    font-weight:800;
+    color:var(--text);
+    border-bottom:1px solid var(--line);
+    background:var(--surface2);
+    letter-spacing:0.2px;
+    text-align:center;
+  }
+  .segment.seg-sound .seg-title{ color:var(--green); }
+  .segment.seg-media .seg-title{ color:var(--blue); }
+  .segment.seg-design .seg-title{ color:var(--orange); }
+  .segment.seg-workshop .seg-title{ color:var(--red); }
+  .segment.seg-sound table.grid tr.now-row td{ background:var(--green-soft); }
+  .segment.seg-media table.grid tr.now-row td{ background:var(--blue-soft); }
+  .segment.seg-design table.grid tr.now-row td{ background:var(--orange-soft); }
+  .segment.seg-workshop table.grid tr.now-row td{ background:var(--red-soft); }
+  .segment.seg-sound .now-badge{ color:var(--green); }
+  .segment.seg-media .now-badge{ color:var(--blue); }
+  .segment.seg-design .now-badge{ color:var(--orange); }
+  .segment.seg-workshop .now-badge{ color:var(--red); }
+  table.grid{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  table.grid th{
+    text-align:center;
+    font-weight:700;
+    color:var(--muted);
+    font-size:11px;
+    padding:10px 4px;
+    border-bottom:1px solid var(--line);
+    background:var(--surface2);
+    line-height:1.3;
+  }
+  table.grid td{
+    text-align:center;
+    padding:10px 6px;
+    border-bottom:1px solid var(--line);
+    vertical-align:middle;
+    color:var(--text);
+    line-height:1.35;
+  }
+  table.grid tr:last-child td{ border-bottom:none; }
+  table.grid td.time{
+    color:var(--muted);
+    font-weight:700;
+    white-space:nowrap;
+    width:52px;
+    font-size:12px;
+  }
+  table.grid th:not(:first-child), table.grid td:not(:first-child){
+    border-inline-start:1px solid var(--line);
+  }
+  .segment.seg-sound table.grid th:not(:first-child), .segment.seg-sound table.grid td:not(:first-child){ border-inline-start-color:rgba(76,175,125,0.35); }
+  .segment.seg-media table.grid th:not(:first-child), .segment.seg-media table.grid td:not(:first-child){ border-inline-start-color:rgba(91,155,217,0.35); }
+  .segment.seg-design table.grid th:not(:first-child), .segment.seg-design table.grid td:not(:first-child){ border-inline-start-color:rgba(224,151,63,0.35); }
+  .segment.seg-workshop table.grid th:not(:first-child), .segment.seg-workshop table.grid td:not(:first-child){ border-inline-start-color:rgba(217,83,79,0.35); }
+  table.grid td b{ font-weight:700; }
+  table.grid td.empty{ color:transparent; }
+  table.grid td.empty::after{ content:"·"; color:var(--muted2); }
+  table.grid tr.note-row td{
+    color:var(--muted);
+    font-size:11.5px;
+    padding:5px;
+  }
+  table.grid tr.note-row td > span.pill{
+    display:inline-block;
+    background:var(--surface2);
+    border:1px solid var(--line-strong);
+    border-radius:999px;
+    padding:3px 12px;
+  }
+  .segment.seg-workshop table.grid tr.note-row td:not(.time){
+    background:rgba(217,83,79,0.35);
+    padding:10px 6px;
+  }
+  .segment.seg-workshop table.grid tr.note-row td > span.pill{
+    background:transparent;
+    border:none;
+    color:var(--text);
+    font-weight:700;
+    font-size:12.5px;
+    padding:0;
+  }
+  table.tidy-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:10.5px;
+  }
+  table.tidy-table th{
+    background:transparent;
+    color:var(--text);
+    font-weight:700;
+    padding:4px 3px;
+    border-bottom:1px solid var(--line-strong);
+    text-align:center;
+  }
+  table.tidy-table td{
+    padding:4px 3px;
+    font-weight:600;
+    text-align:center;
+    color:var(--text);
+  }
+  table.grid tr.note-row td .tidy-table td,
+  table.grid tr.note-row td table.tidy-table td{
+    color:var(--text) !important;
+  }
+  table.tidy-table th.tidy-banner{
+    background:transparent;
+    color:var(--text);
+    font-weight:800;
+    font-size:11.5px;
+    padding:6px 4px;
+    border-bottom:1px solid rgba(217,83,79,0.35);
+  }
+  tr.tidy-row td{ padding:8px 6px; }
+  table.grid tr.now-row td{
+    background:rgba(236,231,220,0.08);
+  }
+  table.grid td.lesson-cell{
+    padding:0;
+    vertical-align:middle;
+  }
+  table.grid td.lesson-cell .lesson-box{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    height:100%;
+    min-height:38px;
+    padding:8px 5px;
+    font-weight:400;
+    font-size:12.5px;
+    line-height:1.3;
+  }
+  table.grid td.lesson-cell .lesson-box b{ font-weight:700; }
+  .lesson-inner{ width:100%; }
+  .segment.seg-workshop table.grid td.lesson-cell{
+    background:rgba(217,83,79,0.35);
+  }
+  .now-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-size:10.5px;
+    font-weight:700;
+    margin-inline-end:6px;
+    color:var(--magamot);
+  }
+  .type-sadnaot .now-badge{ color:var(--sadnaot); }
+  .now-badge .pulse{
+    width:6px;height:6px;border-radius:50%;
+    background:currentColor;
+    animation:pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%{ opacity:0.4; transform:scale(0.7); }
+  }
+
+  #exceptionBanner{
+    background:linear-gradient(135deg, rgba(224,151,63,0.22), rgba(224,151,63,0.10));
+    border-bottom:1px solid rgba(224,151,63,0.4);
+    color:var(--text);
+    padding:12px 20px;
+    text-align:center;
+    font-size:13.5px;
+    font-weight:600;
+    position:relative;
+  }
+  #exceptionBanner .close-x{
+    position:absolute;
+    left:14px;
+    top:50%;
+    transform:translateY(-50%);
+    background:none;
+    border:none;
+    color:var(--muted);
+    font-size:16px;
+    cursor:pointer;
+    line-height:1;
+  }
+  nav.days button.special{
+    border-color:var(--orange);
+  }
+  nav.days button.special::after{
+    content:"מיוחד";
+    display:block;
+    font-size:9px;
+    color:var(--orange);
+    font-weight:700;
+    margin-top:1px;
+  }
+
+  footer.credit{
+    text-align:center;
+    color:var(--muted2);
+    font-size:11.5px;
+    margin-top:30px;
+    padding:0 20px;
+  }
+  footer.credit button{
+    background:none;
+    border:none;
+    color:var(--muted);
+    text-decoration:underline;
+    cursor:pointer;
+    font-family:'Rubik',sans-serif;
+    font-size:11.5px;
+  }
+
+  @media (max-width:520px){
+    header.top h1{ font-size:19px; }
+    .segments{ grid-template-columns:1fr; }
+    .type-magamot .segments{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="exceptionBanner" style="display:none"></div>
+<header class="top">
+  <h1>מערכת שבועית</h1>
+  <div class="clock">היום <span id="todayLabel">–</span> · השעה <span class="time mono" id="clockTime">--:--</span></div>
+</header>
+
+<nav class="days" id="dayTabs"></nav>
+
+<main id="main">
+  <div class="state-box" id="stateBox">
+    <div class="spinner"></div>
+    טוען מערכת...
+  </div>
+</main>
+
+<footer class="credit">
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button>
+  <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
+    <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
+    <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
+    <div style="direction:rtl;text-align:center;margin:8px 0 6px;font-size:11.5px">מיזוגים (merges):</div>
+    <textarea id="debugMerges" readonly style="width:100%;height:140px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
+    <div style="direction:rtl;text-align:center;margin:8px 0 6px;font-size:11.5px">עיצוב טקסט (bold runs) - רק תאים עם תוכן:</div>
+    <textarea id="debugRuns" readonly style="width:100%;height:180px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
+  </div>
+</footer>
+
+<script>
+/* ---------------- CONFIG ---------------- */
+const SPREADSHEET_ID = "1LRUToXyJVqRTDfXS7dm9OQ26IVbie8o3lIYmpFwOHTU";
+const API_KEY = "AIzaSyAyu_5CQaNJQOzWpIAmbqsF4NXT_59oYTY";
+const DAYS = [
+  { name: "ראשון",  gid: "0" },
+  { name: "שני",    gid: "732496766" },
+  { name: "שלישי",  gid: "1363954582" },
+  { name: "רביעי",  gid: "545634015" },
+  { name: "חמישי",  gid: "987180767" },
+];
+// fallback grade mapping, used only if a block's own label can't be read from the sheet
+const FALLBACK_GRADES = {
+  "ראשון": { "מגמות": "ט'-י'",   "סדנאות": "י\"א-י\"ב" },
+  "שני":   { "מגמות": "ט'-י'",   "סדנאות": "י\"א-י\"ב" },
+  "שלישי": { "מגמות": "י\"א-י\"ב", "סדנאות": "ט'-י'" },
+  "רביעי": { "מגמות": "י\"א-י\"ב", "סדנאות": "ט'-י'" },
+  "חמישי": { "מגמות": "י\"א-י\"ב", "סדנאות": "ט'-י'" },
+};
+const NOTE_WORDS = ["הפסקה","זמן סידור","מעגל סוף יום","הסעות"];
+function isNoteText(t){
+  if (!t) return false;
+  if (NOTE_WORDS.some(w => t.includes(w))) return true;
+  if (/^מעגל/.test(t)) return true;
+  return false;
+}
+const JS_DAY_TO_NAME = {0:"ראשון",1:"שני",2:"שלישי",3:"רביעי",4:"חמישי",5:"שישי",6:"שבת"};
+
+const EXCEPTIONS_TAB = "חריגים";
+let todayOverrideSheet = null; // if set, fetch this sheet name instead of the real weekday name when loading "today"
+
+const cache = {}; // gid -> parsed blocks
+
+/* ---------------- helpers ---------------- */
+function clean(v){ return (v==null ? "" : String(v)).replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g,"").replace(/\u00a0/g," ").replace(/\s+/g," ").trim(); }
+function isTime(v){ return /^\d{1,2}:\d{2}$/.test(v); }
+function sheetsApiUrl(dayName){
+  const fields = encodeURIComponent("sheets(data.rowData.values(formattedValue,textFormatRuns,effectiveFormat.textFormat.bold),merges)");
+  return `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?ranges=${encodeURIComponent(dayName)}&includeGridData=true&fields=${fields}&key=${API_KEY}`;
+}
+function escHtml(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function formatCellHtml(rawText, runs, baseBold){
+  if (!rawText) return "";
+  const text = String(rawText).replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g,"").replace(/\u00a0/g," ");
+  const segs = [];
+  if (runs && runs.length) {
+    for (let i = 0; i < runs.length; i++) {
+      const start = runs[i].startIndex || 0;
+      const end = i+1 < runs.length ? (runs[i+1].startIndex || 0) : text.length;
+      const fmt = runs[i].format || {};
+      const bold = ('bold' in fmt) ? !!fmt.bold : !!baseBold;
+      segs.push({ start, end, bold });
+    }
+  } else {
+    segs.push({ start: 0, end: text.length, bold: !!baseBold });
+  }
+  const breaks = [];
+  const re = /\s{3,}/g;
+  let m;
+  while ((m = re.exec(text))) breaks.push([m.index, m.index + m[0].length]);
+  let html = "";
+  segs.forEach(seg => {
+    let pos = seg.start;
+    while (pos < seg.end) {
+      const br = breaks.find(b => b[0] >= pos && b[0] < seg.end);
+      const segTextEnd = br ? br[0] : seg.end;
+      const chunk = escHtml(text.slice(pos, segTextEnd)).replace(/\n+/g, "<br>");
+      if (chunk) html += seg.bold ? `<b>${chunk}</b>` : chunk;
+      if (br) { html += "<br><br>"; pos = br[1]; } else pos = segTextEnd;
+    }
+  });
+  return html.replace(/^(<br>)+/,"").replace(/(<br>)+$/,"");
+}
+function buildMergeMaps(merges){
+  const topLeft = new Map();
+  const covered = new Set();
+  (merges || []).forEach(m => {
+    const r0 = m.startRowIndex || 0, r1 = m.endRowIndex, c0 = m.startColumnIndex || 0, c1 = m.endColumnIndex;
+    topLeft.set(`${r0}_${c0}`, { rowSpan: r1 - r0, colSpan: c1 - c0 });
+    for (let r = r0; r < r1; r++) {
+      for (let c = c0; c < c1; c++) {
+        if (r === r0 && c === c0) continue;
+        covered.add(`${r}_${c}`);
+      }
+    }
+  });
+  return { topLeft, covered };
+}
+
+/* ---------------- parsing ---------------- */
+function parseDay(rows, dayName, merges, rawGrid){
+  const N = rows.length;
+  const { topLeft, covered } = buildMergeMaps(merges);
+
+  // 1) "grouped" header rows: contain one or more cells ending in "שעות" (each starts a track/room group)
+  const groupedHeaders = [];
+  rows.forEach((row, i) => {
+    const shaotCols = [];
+    row.forEach((c, ci) => { if (/שעות\s*$/.test(clean(c))) shaotCols.push(ci); });
+    if (!shaotCols.length) return;
+    const segments = shaotCols.map((timeCol, k) => {
+      const endCol = k + 1 < shaotCols.length ? shaotCols[k+1] : row.length;
+      const rooms = [];
+      for (let c = timeCol + 1; c < endCol; c++) {
+        const name = clean(row[c]);
+        if (name) rooms.push({ col: c, name });
+      }
+      return { timeCol, rooms };
+    }).filter(s => s.rooms.length);
+    if (segments.length) groupedHeaders.push({ rowIndex: i, segments });
+  });
+  const claimed = new Set(groupedHeaders.map(g => g.rowIndex));
+
+  // 2) "flat" header rows: room names listed directly, with a single implied time column
+  //    (detected because the row itself is blank in that column while a row shortly below holds a time there)
+  const flatHeaders = [];
+  for (let i = 0; i < N; i++) {
+    if (claimed.has(i)) continue;
+    const row = rows[i] || [];
+    let timeCol = -1;
+    for (let look = 1; look <= 2 && timeCol === -1; look++) {
+      const nextRow = rows[i+look] || [];
+      for (let c = 0; c < nextRow.length; c++) {
+        if (isTime(clean(nextRow[c])) && !clean(row[c])) { timeCol = c; break; }
+      }
+    }
+    if (timeCol === -1) continue;
+    const rooms = [];
+    row.forEach((c, ci) => {
+      if (ci === timeCol) return;
+      const val = clean(c);
+      if (!val || isTime(val)) return;
+      if (NOTE_WORDS.some(w => val.includes(w))) return;
+      rooms.push({ col: ci, name: val });
+    });
+    if (rooms.length >= 2) flatHeaders.push({ rowIndex: i, segments: [{ timeCol, rooms }], isFlat: true });
+  }
+
+  const allHeaders = [...groupedHeaders, ...flatHeaders].sort((a,b) => a.rowIndex - b.rowIndex);
+
+  // 3) type + grade labels can appear anywhere (often glued onto other text): "יום מגמות \ ט'-י'" etc.
+  const labels = [];
+  rows.forEach((row, i) => {
+    row.forEach(c => {
+      const m = clean(c).match(/יום\s+(מגמות|סדנאות)\s*\\\s*(\S+)/);
+      if (m) labels.push({ rowIndex: i, type: m[1], grade: m[2] });
+    });
+  });
+  labels.sort((a,b) => a.rowIndex - b.rowIndex);
+
+  // 4) build each block: extent, label, and per-segment timelines
+  const blocks = allHeaders.map((h, idx) => {
+    const nextHeaderRow = allHeaders[idx+1] ? allHeaders[idx+1].rowIndex : N;
+    let end = h.rowIndex;
+    let blankRun = 0;
+    for (let r = h.rowIndex + 1; r < nextHeaderRow; r++) {
+      const rowVals = rows[r] || [];
+      const blank = rowVals.every(c => !clean(c));
+      if (blank) { blankRun++; if (blankRun >= 2) break; }
+      else blankRun = 0;
+      end = r;
+    }
+
+    const label = labels[idx] || {};
+    const type = label.type || (idx === 0 ? "מגמות" : "סדנאות");
+    const grade = (FALLBACK_GRADES[dayName] || {})[type] || label.grade || "";
+
+    let tidyInfo = null;
+    if (h.isFlat) {
+      let bannerRow = -1, tidyColIdx = -1;
+      for (let r = h.rowIndex; r <= h.rowIndex + 3 && bannerRow === -1; r++) {
+        const row = rows[r] || [];
+        const idx = row.findIndex(c => NOTE_WORDS.some(w => clean(c).includes(w)));
+        if (idx !== -1) { bannerRow = r; tidyColIdx = idx; }
+      }
+      if (bannerRow !== -1) {
+        const tidyLabel = clean((rows[bannerRow] || [])[tidyColIdx]);
+        const subHeaderRow = rows[bannerRow+1] || [];
+        const valueRow = rows[bannerRow+2] || [];
+        const items = [];
+        for (let c = tidyColIdx; c < subHeaderRow.length; c++) {
+          const lbl = clean(subHeaderRow[c]);
+          if (!lbl) { if (items.length) break; else continue; }
+          items.push({ label: lbl, value: clean(valueRow[c]) });
+        }
+        if (items.length) tidyInfo = { title: tidyLabel, items };
+      }
+    }
+
+    const segments = h.segments.map(seg => {
+      const entries = [];
+      if (h.isFlat) {
+        for (let r = h.rowIndex + 1; r <= end; r++) {
+          const rowVals = rows[r] || [];
+          const timeVal = clean(rowVals[seg.timeCol]);
+          const cells = seg.rooms.map(rm => {
+            const key = `${r}_${rm.col}`;
+            const rc = ((rawGrid && rawGrid[r]) || [])[rm.col] || {};
+            if (covered.has(key)) return { skip: true, name: rm.name };
+            const text = clean(rowVals[rm.col]);
+            if (!text) return { empty: true, name: rm.name };
+            const tl = topLeft.get(key);
+            const span = tl ? tl.rowSpan : 1;
+            return { text, span, name: rm.name, rawText: rc.text || "", runs: rc.runs || null, baseBold: rc.baseBold };
+          });
+          const visible = cells.filter(c => c.text);
+          let note = null;
+          if (visible.length <= 1) {
+            const candidate = visible[0] ? visible[0].text : timeVal;
+            if (isNoteText(candidate)) note = candidate;
+          }
+          entries.push({ time: timeVal, cells, note });
+        }
+      } else {
+        for (let r = h.rowIndex + 1; r <= end; r++) {
+          const rowVals = rows[r] || [];
+          const timeVal = clean(rowVals[seg.timeCol]);
+          const cells = seg.rooms.map(rm => {
+            const rc = ((rawGrid && rawGrid[r]) || [])[rm.col] || {};
+            return { name: rm.name, text: clean(rowVals[rm.col]), rawText: rc.text || "", runs: rc.runs || null, baseBold: rc.baseBold };
+          });
+          const anyContent = timeVal || cells.some(c => c.text);
+          if (!anyContent) continue;
+          const nonEmpty = cells.filter(c => c.text);
+          let note = null;
+          if (nonEmpty.length <= 1) {
+            const candidate = nonEmpty[0] ? nonEmpty[0].text : timeVal;
+            if (isNoteText(candidate)) note = candidate;
+          }
+          entries.push({ time: timeVal, cells, note });
+        }
+      }
+      const rawHeaderCell = clean((rows[h.rowIndex] || [])[seg.timeCol]);
+      let groupName = rawHeaderCell.replace(/^.*,\s*/, "").replace(/שעות\s*$/, "").trim();
+      if (!groupName || groupName.length > 24 || groupName.includes(",")) {
+        groupName = "";
+        for (let r = h.rowIndex - 1; r >= Math.max(0, h.rowIndex - 6); r--) {
+          const candidate = clean((rows[r] || [])[seg.timeCol]);
+          if (candidate && !candidate.includes(",") && candidate.length <= 24 && !/\d/.test(candidate)) {
+            groupName = candidate;
+            break;
+          }
+        }
+      }
+      return { timeCol: seg.timeCol, rooms: seg.rooms, groupName, isFlat: !!h.isFlat, entries };
+    }).filter(s => s.entries.length);
+
+    return { type, grade, tidyInfo, segments };
+  }).filter(b => b.segments.length);
+
+  blocks.sort((a,b) => (a.type === "מגמות" ? 0 : 1) - (b.type === "מגמות" ? 0 : 1));
+
+  return blocks;
+}
+
+/* ---------------- rendering ---------------- */
+function timeToMinutes(t){
+  const m = t.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  return parseInt(m[1],10)*60 + parseInt(m[2],10);
+}
+
+function trackClass(seg, blockType){
+  if (blockType === "סדנאות") return "seg-workshop";
+  const g = seg.groupName || "";
+  if (g.includes("סאונד")) return "seg-sound";
+  if (g.includes("מדיה")) return "seg-media";
+  if (g.includes("עיצוב")) return "seg-design";
+  return "";
+}
+
+function renderNormalRows(seg, isToday, nowMinutes){
+  let nowIdx = -1;
+  if (isToday && nowMinutes != null) {
+    seg.entries.forEach((e, i) => {
+      const t = timeToMinutes(e.time);
+      if (t != null && t <= nowMinutes) nowIdx = i;
+    });
+  }
+  return seg.entries.map((e, i) => {
+    const isNow = i === nowIdx;
+    const timeTd = `<td class="time mono">${isNow?'<span class="now-badge"><span class="pulse"></span></span>':''}${e.time||''}</td>`;
+    if (e.note) {
+      return `<tr class="note-row${isNow?' now-row':''}">${timeTd}<td colspan="${seg.rooms.length}"><span class="pill">${e.note}</span></td></tr>`;
+    }
+    const cellsHtml = e.cells.map(c => `<td class="${c.text?'':'empty'}">${c.text ? formatCellHtml(c.rawText, c.runs, c.baseBold) : ''}</td>`).join('');
+    return `<tr class="${isNow?'now-row':''}">${timeTd}${cellsHtml}</tr>`;
+  }).join('');
+}
+
+function renderFlatRows(seg, isToday, nowMinutes, tidyInfo){
+  let nowIdx = -1;
+  if (isToday && nowMinutes != null) {
+    seg.entries.forEach((e, i) => {
+      const t = timeToMinutes(e.time);
+      if (t != null && t <= nowMinutes) nowIdx = i;
+    });
+  }
+  return seg.entries.map((e, i) => {
+    const isNow = i === nowIdx;
+    const timeTd = `<td class="time mono">${isNow?'<span class="now-badge"><span class="pulse"></span></span>':''}${e.time||''}</td>`;
+    if (e.note) {
+      if (tidyInfo && e.note.includes("זמן סידור")) {
+        const tidyHtml = `<table class="tidy-table"><tr><th colspan="${tidyInfo.items.length}" class="tidy-banner">${tidyInfo.title}</th></tr><tr>${tidyInfo.items.map(t=>`<th>${t.label}</th>`).join('')}</tr><tr>${tidyInfo.items.map(t=>`<td>${t.value||''}</td>`).join('')}</tr></table>`;
+        return `<tr class="note-row tidy-row${isNow?' now-row':''}">${timeTd}<td colspan="${seg.rooms.length}">${tidyHtml}</td></tr>`;
+      }
+      return `<tr class="note-row${isNow?' now-row':''}">${timeTd}<td colspan="${seg.rooms.length}"><span class="pill">${e.note}</span></td></tr>`;
+    }
+    let tds = timeTd;
+    e.cells.forEach(c => {
+      if (c.skip) return;
+      if (c.empty) { tds += `<td class="empty"></td>`; return; }
+      tds += `<td class="lesson-cell" rowspan="${c.span}"><div class="lesson-box"><div class="lesson-inner">${formatCellHtml(c.rawText, c.runs, c.baseBold)}</div></div></td>`;
+    });
+    return `<tr class="${isNow?'now-row':''}">${tds}</tr>`;
+  }).join('');
+}
+
+function renderBlocks(blocks, isToday, nowMinutes){
+  return blocks.map(block => {
+    const typeClass = block.type === "סדנאות" ? "type-sadnaot" : "type-magamot";
+    const segmentsHtml = block.segments.map(seg => {
+      if (!seg.entries.length) return '';
+      const cls = trackClass(seg, block.type);
+      const rowsHtml = seg.isFlat ? renderFlatRows(seg, isToday, nowMinutes, block.tidyInfo) : renderNormalRows(seg, isToday, nowMinutes);
+      return `<div class="segment ${cls}">
+        ${seg.groupName ? `<div class="seg-title">${seg.groupName}</div>` : ''}
+        <table class="grid">
+          <thead><tr><th></th>${seg.rooms.map(r=>`<th>${r.name}</th>`).join('')}</tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+
+    return `<section class="block ${typeClass}">
+      <div class="block-head">
+        <span class="bar"></span>
+        <h2>${block.type || 'לוח יום'}</h2>
+        <span class="grade">${block.grade || ''}</span>
+      </div>
+      <div class="segments">${segmentsHtml}</div>
+    </section>`;
+  }).join('');
+}
+
+/* ---------------- fetch + orchestration ---------------- */
+async function loadDay(dayIdx, { force=false } = {}){
+  const day = DAYS[dayIdx];
+  const now0 = new Date();
+  const isTodayTab = JS_DAY_TO_NAME[now0.getDay()] === day.name;
+  const fetchName = (isTodayTab && todayOverrideSheet) ? todayOverrideSheet : day.name;
+  const main = document.getElementById('main');
+  const stateBox = `<div class="state-box" id="stateBox"><div class="spinner"></div>טוען את יום ${day.name}...</div>`;
+
+  if (!cache[day.gid] || force) {
+    main.innerHTML = stateBox;
+    try {
+      const res = await fetch(sheetsApiUrl(fetchName), { cache: 'no-store' });
+      const json = await res.json();
+      if (!res.ok) throw new Error((json.error && json.error.message) || ('bad status ' + res.status));
+      const sheet = (json.sheets || [])[0];
+      const rowData = (sheet && sheet.data && sheet.data[0] && sheet.data[0].rowData) || [];
+      const rows = rowData.map(rd => (rd.values || []).map(v => (v && v.formattedValue) || ""));
+      const rawGrid = rowData.map(rd => (rd.values || []).map(v => ({ text: (v && v.formattedValue) || "", runs: (v && v.textFormatRuns) || null, baseBold: !!(v && v.effectiveFormat && v.effectiveFormat.textFormat && v.effectiveFormat.textFormat.bold) })));
+      const merges = (sheet && sheet.merges) || [];
+      cache['__raw_' + day.gid] = rows;
+      cache['__merges_' + day.gid] = merges;
+      cache['__rawgrid_' + day.gid] = rawGrid;
+      cache[day.gid] = parseDay(rows, day.name, merges, rawGrid);
+    } catch (err) {
+      console.error(err);
+      main.innerHTML = `<div class="state-box">
+        לא הצלחתי לטעון את יום ${day.name} כרגע.<br>
+        <span style="font-size:11px">${(err && err.message) ? err.message : ''}</span><br>
+        ודא שהשיטס משותף כ"כל מי שיש לו את הקישור - צפייה", ושמפתח ה-API תקין ומאושר לדומיין הזה.
+        <br><button class="retry" onclick="loadDay(${dayIdx}, {force:true})">נסה שוב</button>
+      </div>`;
+      return;
+    }
+  }
+
+  const now = new Date();
+  const todayName = JS_DAY_TO_NAME[now.getDay()];
+  const isToday = todayName === day.name;
+  const nowMinutes = now.getHours()*60 + now.getMinutes();
+
+  const blocks = cache[day.gid];
+  if (!blocks.length) {
+    const raw = cache['__raw_' + day.gid] || [];
+    const dump = raw.slice(0, 40).map((r,i) => `${i}: ${JSON.stringify(r)}`).join('\n');
+    main.innerHTML = `<div class="state-box" style="text-align:right;direction:ltr">
+      <div style="direction:rtl;text-align:center;margin-bottom:14px">לא נמצאו נתונים ליום ${day.name}. יש לי כאן את השורות הגולמיות שהתקבלו - העתק את הכל ושלח לי:</div>
+      <textarea readonly style="width:100%;height:340px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:11px" onclick="this.select()">${dump}</textarea>
+    </div>`;
+    return;
+  }
+  main.innerHTML = renderBlocks(blocks, isToday, nowMinutes);
+}
+
+function buildTabs(){
+  const nav = document.getElementById('dayTabs');
+  const now = new Date();
+  const todayName = JS_DAY_TO_NAME[now.getDay()];
+  nav.innerHTML = DAYS.map((d,i) => `<button data-idx="${i}" class="${d.name===todayName?'today':''}${(d.name===todayName && todayOverrideSheet)?' special':''}">${d.name}<span class="dot"></span></button>`).join('');
+  nav.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      nav.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      loadDay(parseInt(btn.dataset.idx,10));
+    });
+  });
+}
+
+function pickInitialDay(){
+  const now = new Date();
+  const todayName = JS_DAY_TO_NAME[now.getDay()];
+  const idx = DAYS.findIndex(d => d.name === todayName);
+  return idx === -1 ? 0 : idx;
+}
+
+function tickClock(){
+  const now = new Date();
+  document.getElementById('todayLabel').textContent = JS_DAY_TO_NAME[now.getDay()];
+  document.getElementById('clockTime').textContent =
+    String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+}
+
+function extractDMY(s){
+  const nums = (s||"").match(/\d+/g);
+  if (!nums || nums.length < 3) return null;
+  let [d,m,y] = nums.map(n=>parseInt(n,10));
+  if (y < 100) y += 2000;
+  return { d, m, y };
+}
+
+async function checkExceptions(){
+  try {
+    const res = await fetch(sheetsApiUrl(EXCEPTIONS_TAB), { cache: 'no-store' });
+    const json = await res.json();
+    if (!res.ok) return;
+    const sheet = (json.sheets || [])[0];
+    const rowData = (sheet && sheet.data && sheet.data[0] && sheet.data[0].rowData) || [];
+    const rows = rowData.map(rd => (rd.values || []).map(v => (v && v.formattedValue) || ""));
+    const now = new Date();
+    const today = { d: now.getDate(), m: now.getMonth()+1, y: now.getFullYear() };
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r] || [];
+      const dmy = extractDMY(row[0]);
+      if (!dmy) continue;
+      if (dmy.d === today.d && dmy.m === today.m && dmy.y === today.y) {
+        const message = clean(row[1] || "");
+        const altSheet = clean(row[2] || "");
+        if (altSheet) todayOverrideSheet = altSheet;
+        const banner = document.getElementById('exceptionBanner');
+        const text = message || (altSheet ? `היום יש שינוי במערכת` : '');
+        if (text) {
+          banner.innerHTML = `<button class="close-x" onclick="document.getElementById('exceptionBanner').style.display='none'">✕</button>${escHtml(text)}`;
+          banner.style.display = 'block';
+        }
+        break;
+      }
+    }
+  } catch (err) {
+    console.error('exceptions check failed', err);
+  }
+}
+
+document.getElementById('refreshBtn').addEventListener('click', () => {
+  const activeBtn = document.querySelector('nav.days button.active') || document.querySelector('nav.days button');
+  loadDay(parseInt(activeBtn.dataset.idx,10), { force:true });
+});
+
+document.getElementById('debugBtn').addEventListener('click', () => {
+  const panel = document.getElementById('debugPanel');
+  const activeBtn = document.querySelector('nav.days button.active') || document.querySelector('nav.days button');
+  const day = DAYS[parseInt(activeBtn.dataset.idx,10)];
+  const rows = cache['__raw_' + day.gid] || [];
+  const merges = cache['__merges_' + day.gid] || [];
+  const rawGrid = cache['__rawgrid_' + day.gid] || [];
+  document.getElementById('debugRows').value = rows.map((r,i) => `${i}: ${JSON.stringify(r)}`).join('\n');
+  document.getElementById('debugMerges').value = JSON.stringify(merges, null, 1);
+  const runsLines = [];
+  rawGrid.forEach((row, ri) => {
+    row.forEach((cell, ci) => {
+      if (cell && cell.text) runsLines.push(`[${ri},${ci}] "${cell.text}" baseBold=${cell.baseBold} runs=${JSON.stringify(cell.runs)}`);
+    });
+  });
+  document.getElementById('debugRuns').value = runsLines.join('\n');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+});
+
+(async function init(){
+  await checkExceptions();
+  buildTabs();
+  tickClock();
+  setInterval(tickClock, 30000);
+  const initialIdx = pickInitialDay();
+  const initialBtn = document.querySelector(`nav.days button[data-idx="${initialIdx}"]`);
+  if (initialBtn) initialBtn.classList.add('active');
+  loadDay(initialIdx);
+})();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed', err));
+  });
+}
+</script>
+
+</body>
+</html>
