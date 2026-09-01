@@ -429,7 +429,19 @@
   }
   .star-btn.on{ color:#f2c14e; }
   .seg-title .star-btn{ margin-inline-start:6px; font-size:14px; }
-  table.grid th .star-btn{ display:block; margin:2px auto 0; font-size:11px; }
+  table.grid td .lesson-star{
+    display:block;
+    margin:0 auto 2px;
+    font-size:11px;
+  }
+  table.grid td.lesson-cell .lesson-star{
+    position:absolute;
+    top:2px;
+    left:2px;
+    margin:0;
+  }
+  table.grid td.lesson-cell{ position:relative; }
+  table.grid td.mine-lesson{ background:rgba(242,193,78,0.10); }
 
   .my-hint{
     display:none;
@@ -442,17 +454,45 @@
     font-size:12.5px;
     margin-bottom:16px;
   }
-  body.personal-mode .my-hint{ display:block; }
 
-  body.personal-mode .segment.seg-sound:not(.mine-track),
-  body.personal-mode .segment.seg-media:not(.mine-track),
-  body.personal-mode .segment.seg-design:not(.mine-track){
-    display:none;
+  .agenda{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
   }
-  body.personal-mode table.grid th:not(.mine-room):not(:first-child):not([colspan]),
-  body.personal-mode table.grid td:not(.mine-room):not(.time):not([colspan]){
-    display:none;
+  .agenda-item{
+    display:flex;
+    align-items:stretch;
+    gap:12px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-inline-start:4px solid var(--line-strong);
+    border-radius:12px;
+    padding:12px 14px;
   }
+  .agenda-item.seg-sound{ border-inline-start-color:var(--green); }
+  .agenda-item.seg-media{ border-inline-start-color:var(--blue); }
+  .agenda-item.seg-design{ border-inline-start-color:var(--orange); }
+  .agenda-item.seg-workshop{ border-inline-start-color:var(--red); }
+  .agenda-time{
+    font-size:14px;
+    font-weight:700;
+    color:var(--text);
+    min-width:48px;
+    align-self:center;
+  }
+  .agenda-room{
+    font-size:11px;
+    color:var(--muted);
+    font-weight:700;
+    margin-bottom:3px;
+  }
+  .agenda-text{
+    font-size:13.5px;
+    color:var(--text);
+    line-height:1.4;
+  }
+  .agenda-text b{ font-weight:700; }
 
   footer.credit{
     text-align:center;
@@ -499,7 +539,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <span style="opacity:0.5">v7</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <span style="opacity:0.5">v8</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -547,10 +587,14 @@ function setMyTrack(name){
   if (getMyTrack() === name) localStorage.removeItem('myTrack');
   else localStorage.setItem('myTrack', name);
 }
-function getMyRoom(dayName){ return localStorage.getItem('myRoom_' + dayName) || ''; }
-function setMyRoom(dayName, room){
-  if (getMyRoom(dayName) === room) localStorage.removeItem('myRoom_' + dayName);
-  else localStorage.setItem('myRoom_' + dayName, room);
+function getMyLessons(dayName){
+  try { return new Set(JSON.parse(localStorage.getItem('myLessons_' + dayName) || '[]')); }
+  catch(e){ return new Set(); }
+}
+function toggleMyLesson(dayName, key){
+  const set = getMyLessons(dayName);
+  if (set.has(key)) set.delete(key); else set.add(key);
+  localStorage.setItem('myLessons_' + dayName, JSON.stringify([...set]));
 }
 function isPersonalMode(){ return localStorage.getItem('personalMode') === '1'; }
 function setPersonalMode(on){ localStorage.setItem('personalMode', on ? '1' : '0'); }
@@ -775,7 +819,6 @@ function parseDay(rows, dayName, merges, rawGrid){
   }).filter(b => b.segments.length);
 
   blocks.sort((a,b) => (a.type === "מגמות" ? 0 : 1) - (b.type === "מגמות" ? 0 : 1));
-
   return blocks;
 }
 
@@ -795,7 +838,7 @@ function trackClass(seg, blockType){
   return "";
 }
 
-function renderNormalRows(seg, isToday, nowMinutes, myRoom){
+function renderNormalRows(seg, isToday, nowMinutes, dayName, myLessons){
   let nowIdx = -1;
   if (isToday && nowMinutes != null) {
     seg.entries.forEach((e, i) => {
@@ -809,12 +852,17 @@ function renderNormalRows(seg, isToday, nowMinutes, myRoom){
     if (e.note) {
       return `<tr class="note-row${isNow?' now-row':''}">${timeTd}<td colspan="${seg.rooms.length}"><span class="pill">${e.note}</span></td></tr>`;
     }
-    const cellsHtml = e.cells.map(c => `<td class="${c.text?'':'empty'}${c.name===myRoom?' mine-room':''}">${c.text ? formatCellHtml(c.rawText, c.runs, c.baseBold) : ''}</td>`).join('');
+    const cellsHtml = e.cells.map(c => {
+      if (!c.text) return `<td class="empty"></td>`;
+      const key = `${c.name}|${e.time}`;
+      const mine = myLessons.has(key);
+      return `<td class="${mine?'mine-lesson':''}"><button class="star-btn lesson-star${mine?' on':''}" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">${mine?'★':'☆'}</button>${formatCellHtml(c.rawText, c.runs, c.baseBold)}</td>`;
+    }).join('');
     return `<tr class="${isNow?'now-row':''}">${timeTd}${cellsHtml}</tr>`;
   }).join('');
 }
 
-function renderFlatRows(seg, isToday, nowMinutes, tidyInfo, myRoom){
+function renderFlatRows(seg, isToday, nowMinutes, tidyInfo, dayName, myLessons){
   let nowIdx = -1;
   if (isToday && nowMinutes != null) {
     seg.entries.forEach((e, i) => {
@@ -835,9 +883,10 @@ function renderFlatRows(seg, isToday, nowMinutes, tidyInfo, myRoom){
     let tds = timeTd;
     e.cells.forEach(c => {
       if (c.skip) return;
-      const mine = c.name === myRoom ? ' mine-room' : '';
-      if (c.empty) { tds += `<td class="empty${mine}"></td>`; return; }
-      tds += `<td class="lesson-cell${mine}" rowspan="${c.span}"><div class="lesson-box"><div class="lesson-inner">${formatCellHtml(c.rawText, c.runs, c.baseBold)}</div></div></td>`;
+      if (c.empty) { tds += `<td class="empty"></td>`; return; }
+      const key = `${c.name}|${e.time}`;
+      const mine = myLessons.has(key);
+      tds += `<td class="lesson-cell${mine?' mine-lesson':''}" rowspan="${c.span}"><div class="lesson-box"><button class="star-btn lesson-star${mine?' on':''}" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">${mine?'★':'☆'}</button><div class="lesson-inner">${formatCellHtml(c.rawText, c.runs, c.baseBold)}</div></div></td>`;
     });
     return `<tr class="${isNow?'now-row':''}">${tds}</tr>`;
   }).join('');
@@ -845,8 +894,8 @@ function renderFlatRows(seg, isToday, nowMinutes, tidyInfo, myRoom){
 
 function renderBlocks(blocks, isToday, nowMinutes, dayName){
   const myTrack = getMyTrack();
-  const myRoom = getMyRoom(dayName);
-  const hint = (!myTrack || !myRoom) ? `<div class="my-hint">${!myTrack ? 'עדיין לא בחרת מגמה - לחץ על ה-☆ ליד שם המגמה שלך.' : ''} ${!myRoom ? 'עדיין לא בחרת חדר סדנה ליום הזה - לחץ על ה-☆ ליד שם החדר שלך.' : ''}</div>` : '';
+  const myLessons = getMyLessons(dayName);
+  const hint = !myTrack ? `<div class="my-hint" style="display:block">טיפ: לחץ על ה-☆ ליד שם המגמה שלך כדי לסמן אותה, ועל ה-☆ ליד כל שיעור כדי לסמן אותו כשלך.</div>` : '';
   return hint + blocks.map(block => {
     const typeClass = block.type === "סדנאות" ? "type-sadnaot" : "type-magamot";
     const segmentsHtml = block.segments.map(seg => {
@@ -854,17 +903,13 @@ function renderBlocks(blocks, isToday, nowMinutes, dayName){
       const cls = trackClass(seg, block.type);
       const isTrackSeg = block.type === "מגמות" && seg.groupName;
       const mineTrack = isTrackSeg && seg.groupName === myTrack;
-      const rowsHtml = seg.isFlat ? renderFlatRows(seg, isToday, nowMinutes, block.tidyInfo, myRoom) : renderNormalRows(seg, isToday, nowMinutes, myRoom);
+      const rowsHtml = seg.isFlat ? renderFlatRows(seg, isToday, nowMinutes, block.tidyInfo, dayName, myLessons) : renderNormalRows(seg, isToday, nowMinutes, dayName, myLessons);
       const starHtml = isTrackSeg ? `<button class="star-btn track-star${mineTrack?' on':''}" data-track="${escHtml(seg.groupName)}">${mineTrack?'★':'☆'}</button>` : '';
       return `<div class="segment ${cls}${mineTrack?' mine-track':''}">
         ${seg.groupName ? `<div class="seg-title">${seg.groupName}${starHtml}</div>` : ''}
         <div class="table-scroll">
         <table class="grid" style="min-width:${Math.max(320, seg.rooms.length*76 + 56)}px">
-          <thead><tr><th></th>${seg.rooms.map(r=>{
-            const mine = r.name === myRoom;
-            const star = block.type === "סדנאות" ? `<button class="star-btn room-star${mine?' on':''}" data-day="${escHtml(dayName)}" data-room="${escHtml(r.name)}">${mine?'★':'☆'}</button>` : '';
-            return `<th class="${mine?'mine-room':''}">${r.name}${star}</th>`;
-          }).join('')}</tr></thead>
+          <thead><tr><th></th>${seg.rooms.map(r=>`<th>${r.name}</th>`).join('')}</tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
         </div>
@@ -880,6 +925,42 @@ function renderBlocks(blocks, isToday, nowMinutes, dayName){
       <div class="segments">${segmentsHtml}</div>
     </section>`;
   }).join('');
+}
+
+function renderPersonalAgenda(blocks, dayName){
+  const myLessons = getMyLessons(dayName);
+  const items = [];
+  blocks.forEach(block => {
+    block.segments.forEach(seg => {
+      seg.entries.forEach(e => {
+        if (e.note) return;
+        e.cells.forEach(c => {
+          if (c.skip || c.empty || !c.text) return;
+          const key = `${c.name}|${e.time}`;
+          if (myLessons.has(key)) {
+            items.push({
+              time: e.time,
+              room: c.name,
+              html: formatCellHtml(c.rawText, c.runs, c.baseBold),
+              cls: trackClass(seg, block.type)
+            });
+          }
+        });
+      });
+    });
+  });
+  items.sort((a,b) => (timeToMinutes(a.time)||0) - (timeToMinutes(b.time)||0));
+  if (!items.length) {
+    return `<div class="my-hint" style="display:block">עדיין לא סימנת שיעורים ליום הזה. חזור לתצוגה הרגילה (לחץ שוב על "המערכת שלי") ולחץ על ה-☆ ליד כל שיעור שלך.</div>`;
+  }
+  return `<div class="agenda">${items.map(it => `
+    <div class="agenda-item ${it.cls}">
+      <div class="agenda-time mono">${it.time}</div>
+      <div class="agenda-body">
+        <div class="agenda-room">${it.room}</div>
+        <div class="agenda-text">${it.html}</div>
+      </div>
+    </div>`).join('')}</div>`;
 }
 
 /* ---------------- fetch + orchestration ---------------- */
@@ -933,7 +1014,7 @@ async function loadDay(dayIdx, { force=false } = {}){
     </div>`;
     return;
   }
-  main.innerHTML = renderBlocks(blocks, isToday, nowMinutes, day.name);
+  main.innerHTML = isPersonalMode() ? renderPersonalAgenda(blocks, day.name) : renderBlocks(blocks, isToday, nowMinutes, day.name);
 }
 
 function buildTabs(){
@@ -1014,7 +1095,7 @@ function rerenderCurrent(){
   const todayName = JS_DAY_TO_NAME[now.getDay()];
   const isToday = todayName === day.name;
   const nowMinutes = now.getHours()*60 + now.getMinutes();
-  document.getElementById('main').innerHTML = renderBlocks(blocks, isToday, nowMinutes, day.name);
+  document.getElementById('main').innerHTML = isPersonalMode() ? renderPersonalAgenda(blocks, day.name) : renderBlocks(blocks, isToday, nowMinutes, day.name);
 }
 
 document.getElementById('main').addEventListener('click', (ev) => {
@@ -1024,9 +1105,9 @@ document.getElementById('main').addEventListener('click', (ev) => {
     rerenderCurrent();
     return;
   }
-  const roomBtn = ev.target.closest('.room-star');
-  if (roomBtn) {
-    setMyRoom(roomBtn.dataset.day, roomBtn.dataset.room);
+  const lessonBtn = ev.target.closest('.lesson-star');
+  if (lessonBtn) {
+    toggleMyLesson(lessonBtn.dataset.day, lessonBtn.dataset.key);
     rerenderCurrent();
     return;
   }
@@ -1036,11 +1117,11 @@ const myToggleBtn = document.getElementById('myToggle');
 function syncMyToggleUI(){
   const on = isPersonalMode();
   myToggleBtn.classList.toggle('on', on);
-  document.body.classList.toggle('personal-mode', on);
 }
 myToggleBtn.addEventListener('click', () => {
   setPersonalMode(!isPersonalMode());
   syncMyToggleUI();
+  rerenderCurrent();
 });
 syncMyToggleUI();
 
