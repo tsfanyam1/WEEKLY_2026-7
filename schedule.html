@@ -216,37 +216,11 @@
   .table-scroll{
     overflow-x:auto;
     -webkit-overflow-scrolling:touch;
-    -webkit-transform:translateZ(0);
-    transform:translateZ(0);
   }
   table.grid{
     width:100%;
-    border-collapse:separate;
-    border-spacing:0;
+    border-collapse:collapse;
     font-size:13px;
-  }
-  table.grid th:first-child,
-  table.grid td.time{
-    position:sticky;
-    right:0;
-    background:var(--surface2);
-    z-index:2;
-    -webkit-transform:translateZ(0);
-    transform:translateZ(0);
-    will-change:transform;
-  }
-  table.grid tr.note-row td.time,
-  table.grid tr.now-row td.time{
-    background:var(--surface);
-  }
-  table.grid tr.tidy-row td.time{
-    position:sticky !important;
-    right:0 !important;
-    z-index:3;
-    background:var(--surface);
-    -webkit-transform:translateZ(0);
-    transform:translateZ(0);
-    will-change:transform;
   }
   table.grid th{
     text-align:center;
@@ -273,6 +247,10 @@
     white-space:nowrap;
     width:52px;
     font-size:12px;
+  }
+  table.grid tr.note-row td.time,
+  table.grid tr.now-row td.time{
+    background:var(--surface);
   }
   table.grid th:not(:first-child), table.grid td:not(:first-child){
     border-inline-start:1px solid var(--line);
@@ -418,6 +396,64 @@
     margin-top:1px;
   }
 
+  #myToggleWrap{
+    text-align:center;
+    padding:0 16px 14px;
+  }
+  #myToggle{
+    appearance:none;
+    border:1px solid var(--line-strong);
+    background:var(--surface);
+    color:var(--muted);
+    font-family:'Rubik',sans-serif;
+    font-size:13px;
+    font-weight:700;
+    padding:8px 18px;
+    border-radius:999px;
+    cursor:pointer;
+  }
+  #myToggle.on{
+    background:var(--text);
+    color:var(--bg);
+    border-color:var(--text);
+  }
+  .star-btn{
+    background:none;
+    border:none;
+    cursor:pointer;
+    font-size:13px;
+    line-height:1;
+    padding:2px 4px;
+    color:var(--muted2);
+    vertical-align:middle;
+  }
+  .star-btn.on{ color:#f2c14e; }
+  .seg-title .star-btn{ margin-inline-start:6px; font-size:14px; }
+  table.grid th .star-btn{ display:block; margin:2px auto 0; font-size:11px; }
+
+  .my-hint{
+    display:none;
+    background:rgba(224,151,63,0.14);
+    border:1px solid rgba(224,151,63,0.35);
+    color:var(--text);
+    border-radius:12px;
+    padding:12px 16px;
+    text-align:center;
+    font-size:12.5px;
+    margin-bottom:16px;
+  }
+  body.personal-mode .my-hint{ display:block; }
+
+  body.personal-mode .segment.seg-sound:not(.mine-track),
+  body.personal-mode .segment.seg-media:not(.mine-track),
+  body.personal-mode .segment.seg-design:not(.mine-track){
+    display:none;
+  }
+  body.personal-mode table.grid th:not(.mine-room):not(:first-child):not([colspan]),
+  body.personal-mode table.grid td:not(.mine-room):not(.time):not([colspan]){
+    display:none;
+  }
+
   footer.credit{
     text-align:center;
     color:var(--muted2);
@@ -451,6 +487,9 @@
 </header>
 
 <nav class="days" id="dayTabs"></nav>
+<div id="myToggleWrap">
+  <button id="myToggle">⭐ המערכת שלי</button>
+</div>
 
 <main id="main">
   <div class="state-box" id="stateBox">
@@ -460,7 +499,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <span style="opacity:0.5">v5</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <span style="opacity:0.5">v7</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -501,6 +540,20 @@ const JS_DAY_TO_NAME = {0:"ראשון",1:"שני",2:"שלישי",3:"רביעי",
 
 const EXCEPTIONS_TAB = "חריגים";
 let todayOverrideSheet = null; // if set, fetch this sheet name instead of the real weekday name when loading "today"
+
+/* ---------------- personal schedule (stored on this device only) ---------------- */
+function getMyTrack(){ return localStorage.getItem('myTrack') || ''; }
+function setMyTrack(name){
+  if (getMyTrack() === name) localStorage.removeItem('myTrack');
+  else localStorage.setItem('myTrack', name);
+}
+function getMyRoom(dayName){ return localStorage.getItem('myRoom_' + dayName) || ''; }
+function setMyRoom(dayName, room){
+  if (getMyRoom(dayName) === room) localStorage.removeItem('myRoom_' + dayName);
+  else localStorage.setItem('myRoom_' + dayName, room);
+}
+function isPersonalMode(){ return localStorage.getItem('personalMode') === '1'; }
+function setPersonalMode(on){ localStorage.setItem('personalMode', on ? '1' : '0'); }
 
 const cache = {}; // gid -> parsed blocks
 
@@ -742,7 +795,7 @@ function trackClass(seg, blockType){
   return "";
 }
 
-function renderNormalRows(seg, isToday, nowMinutes){
+function renderNormalRows(seg, isToday, nowMinutes, myRoom){
   let nowIdx = -1;
   if (isToday && nowMinutes != null) {
     seg.entries.forEach((e, i) => {
@@ -756,12 +809,12 @@ function renderNormalRows(seg, isToday, nowMinutes){
     if (e.note) {
       return `<tr class="note-row${isNow?' now-row':''}">${timeTd}<td colspan="${seg.rooms.length}"><span class="pill">${e.note}</span></td></tr>`;
     }
-    const cellsHtml = e.cells.map(c => `<td class="${c.text?'':'empty'}">${c.text ? formatCellHtml(c.rawText, c.runs, c.baseBold) : ''}</td>`).join('');
+    const cellsHtml = e.cells.map(c => `<td class="${c.text?'':'empty'}${c.name===myRoom?' mine-room':''}">${c.text ? formatCellHtml(c.rawText, c.runs, c.baseBold) : ''}</td>`).join('');
     return `<tr class="${isNow?'now-row':''}">${timeTd}${cellsHtml}</tr>`;
   }).join('');
 }
 
-function renderFlatRows(seg, isToday, nowMinutes, tidyInfo){
+function renderFlatRows(seg, isToday, nowMinutes, tidyInfo, myRoom){
   let nowIdx = -1;
   if (isToday && nowMinutes != null) {
     seg.entries.forEach((e, i) => {
@@ -782,25 +835,36 @@ function renderFlatRows(seg, isToday, nowMinutes, tidyInfo){
     let tds = timeTd;
     e.cells.forEach(c => {
       if (c.skip) return;
-      if (c.empty) { tds += `<td class="empty"></td>`; return; }
-      tds += `<td class="lesson-cell" rowspan="${c.span}"><div class="lesson-box"><div class="lesson-inner">${formatCellHtml(c.rawText, c.runs, c.baseBold)}</div></div></td>`;
+      const mine = c.name === myRoom ? ' mine-room' : '';
+      if (c.empty) { tds += `<td class="empty${mine}"></td>`; return; }
+      tds += `<td class="lesson-cell${mine}" rowspan="${c.span}"><div class="lesson-box"><div class="lesson-inner">${formatCellHtml(c.rawText, c.runs, c.baseBold)}</div></div></td>`;
     });
     return `<tr class="${isNow?'now-row':''}">${tds}</tr>`;
   }).join('');
 }
 
-function renderBlocks(blocks, isToday, nowMinutes){
-  return blocks.map(block => {
+function renderBlocks(blocks, isToday, nowMinutes, dayName){
+  const myTrack = getMyTrack();
+  const myRoom = getMyRoom(dayName);
+  const hint = (!myTrack || !myRoom) ? `<div class="my-hint">${!myTrack ? 'עדיין לא בחרת מגמה - לחץ על ה-☆ ליד שם המגמה שלך.' : ''} ${!myRoom ? 'עדיין לא בחרת חדר סדנה ליום הזה - לחץ על ה-☆ ליד שם החדר שלך.' : ''}</div>` : '';
+  return hint + blocks.map(block => {
     const typeClass = block.type === "סדנאות" ? "type-sadnaot" : "type-magamot";
     const segmentsHtml = block.segments.map(seg => {
       if (!seg.entries.length) return '';
       const cls = trackClass(seg, block.type);
-      const rowsHtml = seg.isFlat ? renderFlatRows(seg, isToday, nowMinutes, block.tidyInfo) : renderNormalRows(seg, isToday, nowMinutes);
-      return `<div class="segment ${cls}">
-        ${seg.groupName ? `<div class="seg-title">${seg.groupName}</div>` : ''}
+      const isTrackSeg = block.type === "מגמות" && seg.groupName;
+      const mineTrack = isTrackSeg && seg.groupName === myTrack;
+      const rowsHtml = seg.isFlat ? renderFlatRows(seg, isToday, nowMinutes, block.tidyInfo, myRoom) : renderNormalRows(seg, isToday, nowMinutes, myRoom);
+      const starHtml = isTrackSeg ? `<button class="star-btn track-star${mineTrack?' on':''}" data-track="${escHtml(seg.groupName)}">${mineTrack?'★':'☆'}</button>` : '';
+      return `<div class="segment ${cls}${mineTrack?' mine-track':''}">
+        ${seg.groupName ? `<div class="seg-title">${seg.groupName}${starHtml}</div>` : ''}
         <div class="table-scroll">
         <table class="grid" style="min-width:${Math.max(320, seg.rooms.length*76 + 56)}px">
-          <thead><tr><th></th>${seg.rooms.map(r=>`<th>${r.name}</th>`).join('')}</tr></thead>
+          <thead><tr><th></th>${seg.rooms.map(r=>{
+            const mine = r.name === myRoom;
+            const star = block.type === "סדנאות" ? `<button class="star-btn room-star${mine?' on':''}" data-day="${escHtml(dayName)}" data-room="${escHtml(r.name)}">${mine?'★':'☆'}</button>` : '';
+            return `<th class="${mine?'mine-room':''}">${r.name}${star}</th>`;
+          }).join('')}</tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
         </div>
@@ -869,7 +933,7 @@ async function loadDay(dayIdx, { force=false } = {}){
     </div>`;
     return;
   }
-  main.innerHTML = renderBlocks(blocks, isToday, nowMinutes);
+  main.innerHTML = renderBlocks(blocks, isToday, nowMinutes, day.name);
 }
 
 function buildTabs(){
@@ -939,6 +1003,46 @@ async function checkExceptions(){
     console.error('exceptions check failed', err);
   }
 }
+
+function rerenderCurrent(){
+  const activeBtn = document.querySelector('nav.days button.active') || document.querySelector('nav.days button');
+  const dayIdx = parseInt(activeBtn.dataset.idx, 10);
+  const day = DAYS[dayIdx];
+  const blocks = cache[day.gid];
+  if (!blocks) return;
+  const now = new Date();
+  const todayName = JS_DAY_TO_NAME[now.getDay()];
+  const isToday = todayName === day.name;
+  const nowMinutes = now.getHours()*60 + now.getMinutes();
+  document.getElementById('main').innerHTML = renderBlocks(blocks, isToday, nowMinutes, day.name);
+}
+
+document.getElementById('main').addEventListener('click', (ev) => {
+  const trackBtn = ev.target.closest('.track-star');
+  if (trackBtn) {
+    setMyTrack(trackBtn.dataset.track);
+    rerenderCurrent();
+    return;
+  }
+  const roomBtn = ev.target.closest('.room-star');
+  if (roomBtn) {
+    setMyRoom(roomBtn.dataset.day, roomBtn.dataset.room);
+    rerenderCurrent();
+    return;
+  }
+});
+
+const myToggleBtn = document.getElementById('myToggle');
+function syncMyToggleUI(){
+  const on = isPersonalMode();
+  myToggleBtn.classList.toggle('on', on);
+  document.body.classList.toggle('personal-mode', on);
+}
+myToggleBtn.addEventListener('click', () => {
+  setPersonalMode(!isPersonalMode());
+  syncMyToggleUI();
+});
+syncMyToggleUI();
 
 document.getElementById('refreshBtn').addEventListener('click', () => {
   const activeBtn = document.querySelector('nav.days button.active') || document.querySelector('nav.days button');
