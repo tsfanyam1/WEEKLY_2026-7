@@ -365,11 +365,6 @@
   .now-badge .pulse{
     width:6px;height:6px;border-radius:50%;
     background:currentColor;
-    animation:pulse 1.4s ease-in-out infinite;
-  }
-  @keyframes pulse{
-    0%,100%{ opacity:1; transform:scale(1); }
-    50%{ opacity:0.4; transform:scale(0.7); }
   }
 
   #exceptionBanner{
@@ -653,7 +648,7 @@ function sheetsApiUrl(dayName){
   const fields = encodeURIComponent("sheets(data.rowData.values(formattedValue,textFormatRuns,effectiveFormat.textFormat.bold),merges)");
   return `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?ranges=${encodeURIComponent(dayName)}&includeGridData=true&fields=${fields}&key=${API_KEY}`;
 }
-function escHtml(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+ffunction escHtml(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
 function splitLessonSegments(rawText, runs, baseBold){
   if (!rawText) return [];
   const text = String(rawText).replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g,"").replace(/\u00a0/g," ");
