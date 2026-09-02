@@ -219,9 +219,18 @@
   }
   table.grid{
     width:100%;
-    border-collapse:collapse;
+    border-collapse:separate;
+    border-spacing:0;
     font-size:13px;
   }
+  table.grid th:first-child,
+  table.grid td.time{
+    position:sticky;
+    right:0;
+    z-index:2;
+  }
+  table.grid th:first-child{ background:var(--surface2); }
+  table.grid td.time{ background:var(--surface); }
   table.grid th{
     text-align:center;
     font-weight:700;
@@ -444,14 +453,16 @@
     margin:0 auto 2px;
     font-size:11px;
   }
-  table.grid td.lesson-cell .lesson-star{
-    position:absolute;
-    top:2px;
-    left:2px;
-    margin:0;
-  }
   table.grid td.lesson-cell{ position:relative; }
-  table.grid td.mine-lesson{ background:rgba(242,193,78,0.10); }
+  table.grid td .sub-lesson{
+    padding:4px 2px;
+  }
+  table.grid td .sub-lesson + .sub-lesson{
+    border-top:1px dashed var(--line-strong);
+    margin-top:2px;
+  }
+  table.grid td.mine-lesson,
+  table.grid td .sub-lesson.mine-lesson{ background:rgba(242,193,78,0.10); }
   .note-btn{
     display:block;
     margin-top:4px;
@@ -560,7 +571,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <span style="opacity:0.5">v9</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <span style="opacity:0.5">v10</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -643,6 +654,34 @@ function sheetsApiUrl(dayName){
   return `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?ranges=${encodeURIComponent(dayName)}&includeGridData=true&fields=${fields}&key=${API_KEY}`;
 }
 function escHtml(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function splitLessonSegments(rawText, runs, baseBold){
+  if (!rawText) return [];
+  const text = String(rawText).replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g,"").replace(/\u00a0/g," ");
+  const breaks = [];
+  const re = /\s{3,}/g;
+  let m;
+  while ((m = re.exec(text))) breaks.push([m.index, m.index + m[0].length]);
+  const bounds = [];
+  let pos = 0;
+  breaks.forEach(b => { bounds.push([pos, b[0]]); pos = b[1]; });
+  bounds.push([pos, text.length]);
+  return bounds.map(([s,e]) => {
+    const subText = text.slice(s, e).trim();
+    if (!subText) return null;
+    let subRuns = null;
+    if (runs && runs.length) {
+      subRuns = [];
+      for (let i = 0; i < runs.length; i++) {
+        const rs = runs[i].startIndex || 0;
+        const re2 = i+1 < runs.length ? (runs[i+1].startIndex || 0) : text.length;
+        if (re2 <= s || rs >= e) continue;
+        subRuns.push({ startIndex: Math.max(rs, s) - s, format: runs[i].format || {} });
+      }
+      if (!subRuns.length) subRuns = null;
+    }
+    return { rawText: subText, runs: subRuns, baseBold };
+  }).filter(Boolean);
+}
 function formatCellHtml(rawText, runs, baseBold){
   if (!rawText) return "";
   const text = String(rawText).replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g,"").replace(/\u00a0/g," ");
@@ -805,7 +844,7 @@ function parseDay(rows, dayName, merges, rawGrid){
             if (!text) return { empty: true, name: rm.name };
             const tl = topLeft.get(key);
             const span = tl ? tl.rowSpan : 1;
-            return { text, span, name: rm.name, rawText: rc.text || "", runs: rc.runs || null, baseBold: rc.baseBold };
+            return { text, span, name: rm.name, rawText: rc.text || "", runs: rc.runs || null, baseBold: rc.baseBold, subLessons: splitLessonSegments(rc.text, rc.runs, rc.baseBold) };
           });
           const visible = cells.filter(c => c.text);
           let note = null;
@@ -821,7 +860,7 @@ function parseDay(rows, dayName, merges, rawGrid){
           const timeVal = clean(rowVals[seg.timeCol]);
           const cells = seg.rooms.map(rm => {
             const rc = ((rawGrid && rawGrid[r]) || [])[rm.col] || {};
-            return { name: rm.name, text: clean(rowVals[rm.col]), rawText: rc.text || "", runs: rc.runs || null, baseBold: rc.baseBold };
+            return { name: rm.name, text: clean(rowVals[rm.col]), rawText: rc.text || "", runs: rc.runs || null, baseBold: rc.baseBold, subLessons: splitLessonSegments(rc.text, rc.runs, rc.baseBold) };
           });
           const anyContent = timeVal || cells.some(c => c.text);
           if (!anyContent) continue;
@@ -889,9 +928,13 @@ function renderNormalRows(seg, isToday, nowMinutes, dayName, myLessons, segKey){
     }
     const cellsHtml = e.cells.map(c => {
       if (!c.text) return `<td class="empty"></td>`;
-      const key = `${segKey}|${c.name}|${e.time}`;
-      const mine = myLessons.has(key);
-      return `<td class="${mine?'mine-lesson':''}"><button class="star-btn lesson-star${mine?' on':''}" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">${mine?'★':'☆'}</button>${formatCellHtml(c.rawText, c.runs, c.baseBold)}</td>`;
+      const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold }];
+      const subsHtml = subs.map((sub, si) => {
+        const key = `${segKey}|${c.name}|${e.time}|${si}`;
+        const mine = myLessons.has(key);
+        return `<div class="sub-lesson${mine?' mine-lesson':''}"><button class="star-btn lesson-star${mine?' on':''}" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">${mine?'★':'☆'}</button>${formatCellHtml(sub.rawText, sub.runs, sub.baseBold)}</div>`;
+      }).join('');
+      return `<td>${subsHtml}</td>`;
     }).join('');
     return `<tr class="${isNow?'now-row':''}">${timeTd}${cellsHtml}</tr>`;
   }).join('');
@@ -919,12 +962,16 @@ function renderFlatRows(seg, isToday, nowMinutes, tidyInfo, dayName, myLessons, 
     e.cells.forEach(c => {
       if (c.skip) return;
       if (c.empty) { tds += `<td class="empty"></td>`; return; }
-      const key = `${segKey}|${c.name}|${e.time}`;
-      const mine = myLessons.has(key);
+      const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold }];
       const isNoteRoom = (c.name === 'מתמטיקה' || c.name === 'אנגלית');
-      const note = isNoteRoom ? getMyNote(dayName, key) : '';
-      const noteHtml = (isNoteRoom && mine) ? `<button class="star-btn note-btn" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">✎${note?` ${escHtml(note)}`:' הוסף שעה'}</button>` : '';
-      tds += `<td class="lesson-cell${mine?' mine-lesson':''}" rowspan="${c.span}"><div class="lesson-box"><button class="star-btn lesson-star${mine?' on':''}" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">${mine?'★':'☆'}</button><div class="lesson-inner">${formatCellHtml(c.rawText, c.runs, c.baseBold)}</div>${noteHtml}</div></td>`;
+      const subsHtml = subs.map((sub, si) => {
+        const key = `${segKey}|${c.name}|${e.time}|${si}`;
+        const mine = myLessons.has(key);
+        const note = isNoteRoom ? getMyNote(dayName, key) : '';
+        const noteHtml = (isNoteRoom && mine) ? `<button class="star-btn note-btn" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">✎${note?` ${escHtml(note)}`:' הוסף שעה'}</button>` : '';
+        return `<div class="sub-lesson${mine?' mine-lesson':''}"><button class="star-btn lesson-star${mine?' on':''}" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">${mine?'★':'☆'}</button><div class="lesson-inner">${formatCellHtml(sub.rawText, sub.runs, sub.baseBold)}</div>${noteHtml}</div>`;
+      }).join('');
+      tds += `<td class="lesson-cell" rowspan="${c.span}"><div class="lesson-box">${subsHtml}</div></td>`;
     });
     return `<tr class="${isNow?'now-row':''}">${tds}</tr>`;
   }).join('');
@@ -976,17 +1023,20 @@ function renderPersonalAgenda(blocks, dayName){
         if (e.note) return;
         e.cells.forEach(c => {
           if (c.skip || c.empty || !c.text) return;
-          const key = `${segKey}|${c.name}|${e.time}`;
-          if (myLessons.has(key)) {
-            const isNoteRoom = (c.name === 'מתמטיקה' || c.name === 'אנגלית');
-            items.push({
-              time: e.time,
-              room: c.name,
-              html: formatCellHtml(c.rawText, c.runs, c.baseBold),
-              cls: trackClass(seg, block.type),
-              note: isNoteRoom ? getMyNote(dayName, key) : ''
-            });
-          }
+          const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold }];
+          subs.forEach((sub, si) => {
+            const key = `${segKey}|${c.name}|${e.time}|${si}`;
+            if (myLessons.has(key)) {
+              const isNoteRoom = (c.name === 'מתמטיקה' || c.name === 'אנגלית');
+              items.push({
+                time: e.time,
+                room: c.name,
+                html: formatCellHtml(sub.rawText, sub.runs, sub.baseBold),
+                cls: trackClass(seg, block.type),
+                note: isNoteRoom ? getMyNote(dayName, key) : ''
+              });
+            }
+          });
         });
       });
     });
@@ -1096,8 +1146,13 @@ function extractDMY(s){
 }
 
 async function checkExceptions(){
+  const withTimeout = (promise, ms) => Promise.race([
+    promise,
+    new Promise((resolve) => setTimeout(() => resolve(null), ms))
+  ]);
   try {
-    const res = await fetch(sheetsApiUrl(EXCEPTIONS_TAB), { cache: 'no-store' });
+    const res = await withTimeout(fetch(sheetsApiUrl(EXCEPTIONS_TAB), { cache: 'no-store' }), 5000);
+    if (!res) return; // timed out - don't block the app
     const json = await res.json();
     if (!res.ok) return;
     const sheet = (json.sheets || [])[0];
@@ -1154,14 +1209,13 @@ document.getElementById('main').addEventListener('click', (ev) => {
     const mine = getMyLessons(day).has(key);
     lessonBtn.classList.toggle('on', mine);
     lessonBtn.textContent = mine ? '★' : '☆';
-    const cell = lessonBtn.closest('td');
-    if (cell) cell.classList.toggle('mine-lesson', mine);
-    const box = lessonBtn.closest('.lesson-box');
-    if (box) {
+    const subEl = lessonBtn.closest('.sub-lesson');
+    if (subEl) subEl.classList.toggle('mine-lesson', mine);
+    if (subEl) {
       const parts = key.split('|');
       const room = parts[2];
       const isNoteRoom = room === 'מתמטיקה' || room === 'אנגלית';
-      let noteBtn = box.querySelector('.note-btn');
+      let noteBtn = subEl.querySelector('.note-btn');
       if (isNoteRoom && mine && !noteBtn) {
         noteBtn = document.createElement('button');
         noteBtn.className = 'star-btn note-btn';
@@ -1169,7 +1223,7 @@ document.getElementById('main').addEventListener('click', (ev) => {
         noteBtn.dataset.key = key;
         const existing = getMyNote(day, key);
         noteBtn.textContent = existing ? `✎ ${existing}` : '✎ הוסף שעה';
-        box.appendChild(noteBtn);
+        subEl.appendChild(noteBtn);
       } else if (noteBtn && !mine) {
         noteBtn.remove();
       }
