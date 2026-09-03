@@ -566,7 +566,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <span style="opacity:0.5">v10</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <span style="opacity:0.5">v12</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -648,7 +648,7 @@ function sheetsApiUrl(dayName){
   const fields = encodeURIComponent("sheets(data.rowData.values(formattedValue,textFormatRuns,effectiveFormat.textFormat.bold),merges)");
   return `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?ranges=${encodeURIComponent(dayName)}&includeGridData=true&fields=${fields}&key=${API_KEY}`;
 }
-ffunction escHtml(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+function escHtml(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
 function splitLessonSegments(rawText, runs, baseBold){
   if (!rawText) return [];
   const text = String(rawText).replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g,"").replace(/\u00a0/g," ");
@@ -1147,9 +1147,9 @@ async function checkExceptions(){
   ]);
   try {
     const res = await withTimeout(fetch(sheetsApiUrl(EXCEPTIONS_TAB), { cache: 'no-store' }), 5000);
-    if (!res) return; // timed out - don't block the app
+    if (!res) return false; // timed out - don't block the app
     const json = await res.json();
-    if (!res.ok) return;
+    if (!res.ok) return false;
     const sheet = (json.sheets || [])[0];
     const rowData = (sheet && sheet.data && sheet.data[0] && sheet.data[0].rowData) || [];
     const rows = rowData.map(rd => (rd.values || []).map(v => (v && v.formattedValue) || ""));
@@ -1169,11 +1169,13 @@ async function checkExceptions(){
           banner.innerHTML = `<button class="close-x" onclick="document.getElementById('exceptionBanner').style.display='none'">✕</button>${escHtml(text)}`;
           banner.style.display = 'block';
         }
-        break;
+        return !!(text || altSheet);
       }
     }
+    return false;
   } catch (err) {
     console.error('exceptions check failed', err);
+    return false;
   }
 }
 
@@ -1280,16 +1282,23 @@ document.getElementById('debugBtn').addEventListener('click', () => {
   panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
 });
 
-(async function init(){
-  await checkExceptions();
+buildTabs();
+tickClock();
+setInterval(tickClock, 30000);
+const initialIdx = pickInitialDay();
+const initialBtn = document.querySelector(`nav.days button[data-idx="${initialIdx}"]`);
+if (initialBtn) initialBtn.classList.add('active');
+loadDay(initialIdx);
+checkExceptions().then((changed) => {
+  if (!changed) return;
   buildTabs();
-  tickClock();
-  setInterval(tickClock, 30000);
-  const initialIdx = pickInitialDay();
-  const initialBtn = document.querySelector(`nav.days button[data-idx="${initialIdx}"]`);
-  if (initialBtn) initialBtn.classList.add('active');
-  loadDay(initialIdx);
-})();
+  const activeBtn = document.querySelector('nav.days button.active') || document.querySelector('nav.days button');
+  if (activeBtn) {
+    document.querySelectorAll('nav.days button').forEach(b=>b.classList.remove('active'));
+    activeBtn.classList.add('active');
+  }
+  loadDay(pickInitialDay(), { force:true });
+});
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
