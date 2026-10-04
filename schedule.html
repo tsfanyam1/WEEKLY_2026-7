@@ -1,3 +1,8 @@
+אני מעתיק את הקובץ המלא (גרסה v15) בחלקים כדי להדביק לך אותו כאן כטקסט, וממשיך לקרוא את החלק הבא.עשיתי את שני הדברים. ב"המערכת שלי" יש עכשיו שני חלקים באותו מבנה כמו בתצוגה הרגילה: קודם **מגמות** ומתחתיו **סדנאות**, כל אחד עם הכותרת והשכבה שלו. בתוך כל חלק השיעורים שסימנת ממוינים לפי שעה. בחלק של המגמות מופיע לפני שם החדר גם שם המגמה (למשל "סאונד · מחשבים"). אם לא סימנת כלום באחד החלקים, יופיע בו "לא סימנת כאן שיעורים". הרצתי את הפונקציה מול הנתונים של יום חמישי והיא יוצרת את החלק הנכון, אבל לא בדקתי איך זה נראה על המסך בטלפון, אז תגיד לי אם משהו נראה מוזר.
+
+הנה הקוד המלא. תחליף בו את כל תוכן `schedule.html` ב-GitHub. בתחתית הדף אמור להופיע **v15**.
+
+```html
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -527,6 +532,11 @@
     line-height:1.4;
   }
   .agenda-text b{ font-weight:700; }
+  .agenda-empty{
+    color:var(--muted2);
+    font-size:12.5px;
+    padding:10px 4px;
+  }
 
   footer.credit{
     text-align:center;
@@ -574,7 +584,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <span style="opacity:0.5">v13</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <span style="opacity:0.5">v15</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -615,6 +625,12 @@ const JS_DAY_TO_NAME = {0:"ראשון",1:"שני",2:"שלישי",3:"רביעי",
 
 const EXCEPTIONS_TAB = "חריגים";
 let todayOverrideSheet = null; // if set, fetch this sheet name instead of the real weekday name when loading "today"
+
+/* rooms where a student can type their own personal time */
+function isTimeNoteRoom(name){
+  name = name || '';
+  return name === 'מתמטיקה' || name === 'אנגלית' || name.includes('פודק');
+}
 
 /* ---------------- personal schedule (stored on this device only) ---------------- */
 function getMyTrack(){ return localStorage.getItem('myTrack') || ''; }
@@ -971,7 +987,7 @@ function renderFlatRows(seg, isToday, nowMinutes, tidyInfo, dayName, myLessons, 
       if (c.skip) return;
       if (c.empty) { tds += `<td class="empty"></td>`; return; }
       const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold, baseStrike: c.baseStrike }];
-      const isNoteRoom = (c.name === 'מתמטיקה' || c.name === 'אנגלית');
+      const isNoteRoom = isTimeNoteRoom(c.name);
       const subsHtml = subs.map((sub, si) => {
         const key = `${segKey}|${c.name}|${e.time}|${si}`;
         const mine = myLessons.has(key);
@@ -1023,8 +1039,8 @@ function renderBlocks(blocks, isToday, nowMinutes, dayName){
 
 function renderPersonalAgenda(blocks, dayName){
   const myLessons = getMyLessons(dayName);
-  const items = [];
-  blocks.forEach(block => {
+  const sections = blocks.map(block => {
+    const items = [];
     block.segments.forEach(seg => {
       const segKey = `${block.type}|${seg.groupName || ''}`;
       seg.entries.forEach(e => {
@@ -1035,10 +1051,11 @@ function renderPersonalAgenda(blocks, dayName){
           subs.forEach((sub, si) => {
             const key = `${segKey}|${c.name}|${e.time}|${si}`;
             if (myLessons.has(key)) {
-              const isNoteRoom = (c.name === 'מתמטיקה' || c.name === 'אנגלית');
+              const isNoteRoom = isTimeNoteRoom(c.name);
+              const roomLabel = (block.type === "מגמות" && seg.groupName) ? `${seg.groupName} · ${c.name}` : c.name;
               items.push({
                 time: e.time,
-                room: c.name,
+                room: roomLabel,
                 html: formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike),
                 cls: trackClass(seg, block.type),
                 note: isNoteRoom ? getMyNote(dayName, key) : ''
@@ -1048,19 +1065,36 @@ function renderPersonalAgenda(blocks, dayName){
         });
       });
     });
+    items.sort((a,b) => (timeToMinutes(a.time)||0) - (timeToMinutes(b.time)||0));
+    return { block, items };
   });
-  items.sort((a,b) => (timeToMinutes(a.time)||0) - (timeToMinutes(b.time)||0));
-  if (!items.length) {
+
+  const total = sections.reduce((n, sec) => n + sec.items.length, 0);
+  if (!total) {
     return `<div class="my-hint" style="display:block">עדיין לא סימנת שיעורים ליום הזה. חזור לתצוגה הרגילה (לחץ שוב על "המערכת שלי") ולחץ על ה-☆ ליד כל שיעור שלך.</div>`;
   }
-  return `<div class="agenda">${items.map(it => `
-    <div class="agenda-item ${it.cls}">
-      <div class="agenda-time mono">${it.note || it.time}</div>
-      <div class="agenda-body">
-        <div class="agenda-room">${it.room}</div>
-        <div class="agenda-text">${it.html}</div>
+
+  return sections.map(({ block, items }) => {
+    const typeClass = block.type === "סדנאות" ? "type-sadnaot" : "type-magamot";
+    const body = items.length
+      ? `<div class="agenda">${items.map(it => `
+        <div class="agenda-item ${it.cls}">
+          <div class="agenda-time mono">${it.note || it.time}</div>
+          <div class="agenda-body">
+            <div class="agenda-room">${escHtml(it.room)}</div>
+            <div class="agenda-text">${it.html}</div>
+          </div>
+        </div>`).join('')}</div>`
+      : `<div class="agenda-empty">לא סימנת כאן שיעורים</div>`;
+    return `<section class="block ${typeClass}">
+      <div class="block-head">
+        <span class="bar"></span>
+        <h2>${block.type || 'לוח יום'}</h2>
+        <span class="grade">${block.grade || ''}</span>
       </div>
-    </div>`).join('')}</div>`;
+      ${body}
+    </section>`;
+  }).join('');
 }
 
 /* ---------------- fetch + orchestration ---------------- */
@@ -1224,7 +1258,7 @@ document.getElementById('main').addEventListener('click', (ev) => {
     if (subEl) {
       const parts = key.split('|');
       const room = parts[2];
-      const isNoteRoom = room === 'מתמטיקה' || room === 'אנגלית';
+      const isNoteRoom = isTimeNoteRoom(room);
       let noteBtn = subEl.querySelector('.note-btn');
       if (isNoteRoom && mine && !noteBtn) {
         noteBtn = document.createElement('button');
@@ -1322,3 +1356,6 @@ if ('serviceWorker' in navigator) {
 
 </body>
 </html>
+```
+
+אחרי שתאשר שזה עובד, נחזור לשרת ההתראות. הצעד הראשון שם הוא פתיחת חשבון חינמי ב-Render.com דרך ה-GitHub שלך.
