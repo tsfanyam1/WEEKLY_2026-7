@@ -536,7 +536,7 @@
   footer.credit a{ color:var(--muted); text-decoration:underline; }
 
   /* ---------- display mode (big screen / projector): ?display=1 ---------- */
-  body.display-mode{ overflow:hidden; height:100vh; padding-bottom:0; cursor:none; }
+  body.display-mode{ overflow:hidden; height:100vh; padding-bottom:0; }
   body.display-mode nav.days,
   body.display-mode #myToggleWrap,
   body.display-mode footer.credit,
@@ -544,16 +544,19 @@
   body.display-mode .note-btn,
   body.display-mode .my-hint{ display:none !important; }
   body.display-mode header.top{ padding:8px 20px 6px; }
-  body.display-mode header.top h1{ font-size:28px; margin:0; }
-  body.display-mode header.top .clock{ font-size:18px; }
+  body.display-mode header.top h1{ font-size:clamp(26px, 4vh, 72px); margin:0; }
+  body.display-mode header.top .clock{ font-size:clamp(16px, 2.4vh, 40px); }
   body.display-mode main{
     position:absolute; left:50%; top:0;
     max-width:none; padding:0; margin:0;
     transform-origin:top center;
   }
   body.display-mode main.layout-side{
-    display:grid; grid-template-columns:1fr 1fr; gap:22px; align-items:start;
+    display:grid; grid-template-columns:minmax(min-content,1fr) minmax(min-content,1fr); gap:22px; align-items:start;
   }
+  body.display-mode .segment{ overflow:visible; }
+  body.display-mode .type-magamot .segments{ grid-template-columns:minmax(min-content,1.1fr) minmax(min-content,1.1fr) minmax(min-content,1.4fr); }
+  body.display-mode .type-sadnaot .segments{ grid-template-columns:minmax(min-content,1fr); }
   body.display-mode section.block{ margin-bottom:0; }
   body.display-mode .block-head{ margin-bottom:8px; }
   body.display-mode .segments{ gap:10px; }
@@ -616,7 +619,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v16</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v17</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -1377,15 +1380,29 @@ function fitDisplay(){
   const vw = window.innerWidth, vh = window.innerHeight;
   const availH = Math.max(100, vh - topH - 10);
   main.style.transform = 'none';
+
+  // lay the content out at width W and report the width it really needs and its height
+  function measure(W){
+    main.style.width = W + 'px';
+    const kids = Array.prototype.slice.call(main.children);
+    let w = W;
+    if (kids.length) {
+      const rects = kids.map(k => k.getBoundingClientRect());
+      const span = Math.max.apply(null, rects.map(r => r.right)) - Math.min.apply(null, rects.map(r => r.left));
+      w = Math.max(W, Math.ceil(span));
+    }
+    if (w > W) main.style.width = w + 'px';
+    return { W: w, H: main.offsetHeight };
+  }
+
   let best = null;
   ['side', 'stack'].forEach(layout => {
     main.classList.toggle('layout-side', layout === 'side');
-    for (let W = 1000; W <= 3400; W += 200) {
-      main.style.width = W + 'px';
-      const H = main.offsetHeight;
-      if (!H) continue;
-      const scale = Math.min(vw / W, availH / H);
-      if (!best || scale > best.scale) best = { scale, W, layout };
+    for (let W = 900; W <= 3600; W += 100) {
+      const m = measure(W);
+      if (!m.H) continue;
+      const scale = Math.min(vw / m.W, availH / m.H);
+      if (!best || scale > best.scale) best = { scale, W: m.W, layout };
     }
   });
   if (!best) return;
@@ -1427,6 +1444,8 @@ if (DISPLAY_MODE) {
   }, 60000);
   // every 3 minutes: quietly re-read the sheet (no spinner, no flicker)
   setInterval(() => loadDay(shownIdx, { force:true, silent:true }), 180000);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitDisplay());
+  setTimeout(fitDisplay, 1500);
   let resizeTimer = null;
   window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(fitDisplay, 250); });
 }
