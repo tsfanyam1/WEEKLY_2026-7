@@ -540,8 +540,6 @@
   body.display-mode nav.days,
   body.display-mode #myToggleWrap,
   body.display-mode footer.credit,
-  body.display-mode .star-btn,
-  body.display-mode .note-btn,
   body.display-mode .my-hint{ display:none !important; }
   body.display-mode header.top{ padding:8px 20px 6px; }
   body.display-mode header.top h1{ font-size:clamp(26px, 4vh, 72px); margin:0; }
@@ -551,27 +549,46 @@
     max-width:none; padding:0; margin:0;
     transform-origin:top center;
   }
-  body.display-mode main.layout-side{
-    display:grid; grid-template-columns:minmax(min-content,1fr) minmax(min-content,1fr); gap:22px; align-items:start;
+  .d-block{ margin-bottom:30px; }
+  .d-head{ display:flex; align-items:baseline; gap:14px; margin:0 0 14px; }
+  .d-head .bar{ width:6px; height:28px; border-radius:3px; background:var(--text); }
+  .type-sadnaot .d-head .bar{ background:var(--red); }
+  .d-head h2{ font-size:30px; font-weight:800; margin:0; }
+  .d-head .grade{ font-size:20px; font-weight:600; color:var(--muted); }
+  .type-sadnaot .d-head .grade{ color:var(--red); }
+  .d-cols{ display:grid; gap:20px; align-items:start; }
+  .d-col-title{ font-size:24px; font-weight:800; margin:0 0 10px; padding-bottom:8px; border-bottom:3px solid var(--line-strong); }
+  .d-col-title.seg-sound{ color:var(--green); border-bottom-color:var(--green); }
+  .d-col-title.seg-media{ color:var(--blue); border-bottom-color:var(--blue); }
+  .d-col-title.seg-design{ color:var(--orange); border-bottom-color:var(--orange); }
+  .d-col .d-card{ margin-bottom:10px; }
+  .d-list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:10px; }
+  .d-empty{ color:var(--muted2); font-size:18px; padding:8px 4px; }
+  .d-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-inline-start:6px solid var(--line-strong);
+    border-radius:12px;
+    padding:10px 16px 12px;
   }
-  body.display-mode .segment{ overflow:visible; }
-  body.display-mode .type-magamot .segments{ grid-template-columns:minmax(min-content,1.1fr) minmax(min-content,1.1fr) minmax(min-content,1.4fr); }
-  body.display-mode .type-sadnaot .segments{ grid-template-columns:minmax(min-content,1fr); }
-  body.display-mode section.block{ margin-bottom:0; }
-  body.display-mode .block-head{ margin-bottom:8px; }
-  body.display-mode .segments{ gap:10px; }
-  body.display-mode .segment .seg-title{ padding:6px 10px; font-size:15px; }
-  body.display-mode .table-scroll{ overflow:visible; }
-  body.display-mode table.grid{ min-width:0 !important; font-size:14px; }
-  body.display-mode table.grid th:first-child,
-  body.display-mode table.grid td.time{ position:static; }
-  body.display-mode table.grid th{ font-size:12.5px; padding:6px 3px; }
-  body.display-mode table.grid td{ padding:4px 4px; }
-  body.display-mode table.grid td.time{ font-size:13px; width:44px; }
-  body.display-mode table.grid td.lesson-cell .lesson-box{ min-height:0; padding:3px 4px; font-size:14px; }
-  body.display-mode table.grid td .sub-lesson{ padding:2px 1px; }
-  body.display-mode table.grid td.mine-lesson,
-  body.display-mode table.grid td .sub-lesson.mine-lesson{ background:none; }
+  .d-card.seg-sound{ border-inline-start-color:var(--green); }
+  .d-card.seg-media{ border-inline-start-color:var(--blue); }
+  .d-card.seg-design{ border-inline-start-color:var(--orange); }
+  .d-card.seg-workshop{ border-inline-start-color:var(--red); }
+  .d-top{ display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+  .d-time{ font-size:17px; font-weight:700; color:var(--muted); }
+  .d-text{ font-size:25px; line-height:1.3; margin-top:2px; }
+  .d-text b{ font-weight:700; }
+  .d-text s{ text-decoration:line-through; text-decoration-color:var(--red); text-decoration-thickness:3px; color:var(--muted2); opacity:0.8; }
+  .d-room{ font-size:17px; color:var(--muted); }
+  .d-card.now{ border-color:var(--text); box-shadow:0 0 0 2px var(--text); background:var(--surface2); }
+  .d-card.now .d-time{ color:var(--text); }
+  .d-card.done{ opacity:0.38; }
+  .d-foot{ border-top:2px solid var(--line-strong); padding-top:14px; text-align:center; }
+  .d-notes{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px 34px; font-size:24px; font-weight:700; }
+  .d-notes .t{ color:var(--muted); font-weight:600; margin-inline-start:8px; }
+  .d-tidy{ display:flex; flex-wrap:wrap; justify-content:center; gap:6px 28px; margin-top:10px; font-size:20px; color:var(--muted); }
+  .d-tidy b{ color:var(--text); }
 
   footer.credit{
     text-align:center;
@@ -619,7 +636,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v17</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v18</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -1038,7 +1055,83 @@ function renderFlatRows(seg, isToday, nowMinutes, tidyInfo, dayName, myLessons, 
   }).join('');
 }
 
+/* ---------------- display mode renderer (clean cards, no tables) ---------------- */
+function collectDisplayItems(block, seg){
+  const items = [];
+  const entries = seg.entries;
+  entries.forEach((e, i) => {
+    if (e.note) return;
+    e.cells.forEach(c => {
+      if (c.skip || c.empty || !c.text) return;
+      const span = c.span || 1;
+      const endEntry = entries[i + span];
+      const end = endEntry ? endEntry.time : '';
+      const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold, baseStrike: c.baseStrike }];
+      subs.forEach(sub => {
+        items.push({
+          start: e.time,
+          end: isTime(end) ? end : '',
+          room: c.name,
+          html: formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike),
+          cls: trackClass(seg, block.type)
+        });
+      });
+    });
+  });
+  items.sort((a, b) => (timeToMinutes(a.start) || 0) - (timeToMinutes(b.start) || 0));
+  return items;
+}
+
+function renderDisplay(blocks, isToday, nowMinutes){
+  const cardHtml = it => {
+    const s = timeToMinutes(it.start);
+    const en = it.end ? timeToMinutes(it.end) : null;
+    let st = '';
+    if (isToday && s != null) {
+      const endMin = en != null ? en : s + 45;
+      if (nowMinutes >= endMin) st = ' done';
+      else if (nowMinutes >= s) st = ' now';
+    }
+    const t = it.end ? `${it.start}–${it.end}` : it.start;
+    return `<div class="d-card ${it.cls}${st}"><div class="d-top"><span class="d-time mono">${escHtml(t)}</span><span class="d-room">${escHtml(it.room)}</span></div><div class="d-text">${it.html}</div></div>`;
+  };
+
+  const blocksHtml = blocks.map(block => {
+    const typeClass = block.type === "סדנאות" ? "type-sadnaot" : "type-magamot";
+    const cols = block.segments.map(seg => ({ seg, items: collectDisplayItems(block, seg) }));
+    let body;
+    if (block.segments.length > 1) {
+      body = `<div class="d-cols" style="grid-template-columns:repeat(${cols.length}, minmax(0, 1fr))">` +
+        cols.map(col => `<div class="d-col"><div class="d-col-title ${trackClass(col.seg, block.type)}">${escHtml(col.seg.groupName || '')}</div>${
+          col.items.length ? col.items.map(cardHtml).join('') : '<div class="d-empty">אין שיעורים</div>'
+        }</div>`).join('') + `</div>`;
+    } else {
+      const items = cols.length ? cols[0].items : [];
+      body = `<div class="d-list">${items.map(cardHtml).join('')}</div>`;
+    }
+    return `<section class="d-block ${typeClass}">
+      <div class="d-head"><span class="bar"></span><h2>${block.type || 'לוח יום'}</h2><span class="grade">${block.grade || ''}</span></div>
+      ${body}
+    </section>`;
+  }).join('');
+
+  // end-of-day line (cleanup, closing circle, buses) taken from the last block
+  const last = blocks[blocks.length - 1];
+  let foot = '';
+  if (last && last.segments.length) {
+    const notes = [];
+    last.segments[0].entries.forEach(e => {
+      if (e.note && !e.note.includes('הפסקה')) notes.push({ time: e.time, text: e.note });
+    });
+    const notesHtml = notes.length ? `<div class="d-notes">${notes.map(n => `<span>${escHtml(n.text)}<span class="t mono">${escHtml(n.time)}</span></span>`).join('')}</div>` : '';
+    const tidyHtml = (last.tidyInfo && last.tidyInfo.items.length) ? `<div class="d-tidy">${last.tidyInfo.items.map(t => `<span><b>${escHtml(t.label)}</b> ${escHtml(t.value || '')}</span>`).join('')}</div>` : '';
+    if (notesHtml || tidyHtml) foot = `<div class="d-foot">${notesHtml}${tidyHtml}</div>`;
+  }
+  return blocksHtml + foot;
+}
+
 function renderBlocks(blocks, isToday, nowMinutes, dayName){
+  if (DISPLAY_MODE) return renderDisplay(blocks, isToday, nowMinutes);
   const myTrack = DISPLAY_MODE ? '' : getMyTrack();
   const myLessons = DISPLAY_MODE ? new Set() : getMyLessons(dayName);
   const hint = (!myTrack && !DISPLAY_MODE) ? `<div class="my-hint" style="display:block">טיפ: לחץ על ה-☆ ליד שם המגמה שלך כדי לסמן אותה, ועל ה-☆ ליד כל שיעור כדי לסמן אותו כשלך.</div>` : '';
@@ -1396,17 +1489,13 @@ function fitDisplay(){
   }
 
   let best = null;
-  ['side', 'stack'].forEach(layout => {
-    main.classList.toggle('layout-side', layout === 'side');
-    for (let W = 900; W <= 3600; W += 100) {
-      const m = measure(W);
-      if (!m.H) continue;
-      const scale = Math.min(vw / m.W, availH / m.H);
-      if (!best || scale > best.scale) best = { scale, W: m.W, layout };
-    }
-  });
+  for (let W = 900; W <= 3600; W += 100) {
+    const m = measure(W);
+    if (!m.H) continue;
+    const scale = Math.min(vw / m.W, availH / m.H);
+    if (!best || scale > best.scale) best = { scale, W: m.W };
+  }
   if (!best) return;
-  main.classList.toggle('layout-side', best.layout === 'side');
   main.style.width = best.W + 'px';
   main.style.marginLeft = (-best.W / 2) + 'px';
   main.style.top = (topH + 4) + 'px';
