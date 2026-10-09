@@ -549,46 +549,48 @@
     max-width:none; padding:0; margin:0;
     transform-origin:top center;
   }
-  .d-block{ margin-bottom:30px; }
-  .d-head{ display:flex; align-items:baseline; gap:14px; margin:0 0 14px; }
+  .d-block{ margin-bottom:28px; }
+  .d-head{ display:flex; align-items:baseline; gap:14px; margin:0 0 12px; }
   .d-head .bar{ width:6px; height:28px; border-radius:3px; background:var(--text); }
   .type-sadnaot .d-head .bar{ background:var(--red); }
   .d-head h2{ font-size:30px; font-weight:800; margin:0; }
   .d-head .grade{ font-size:20px; font-weight:600; color:var(--muted); }
   .type-sadnaot .d-head .grade{ color:var(--red); }
-  .d-cols{ display:grid; gap:20px; align-items:start; }
-  .d-col-title{ font-size:24px; font-weight:800; margin:0 0 10px; padding-bottom:8px; border-bottom:3px solid var(--line-strong); }
-  .d-col-title.seg-sound{ color:var(--green); border-bottom-color:var(--green); }
-  .d-col-title.seg-media{ color:var(--blue); border-bottom-color:var(--blue); }
-  .d-col-title.seg-design{ color:var(--orange); border-bottom-color:var(--orange); }
-  .d-col .d-card{ margin-bottom:10px; }
-  .d-list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:10px; }
-  .d-empty{ color:var(--muted2); font-size:18px; padding:8px 4px; }
-  .d-card{
-    background:var(--surface);
-    border:1px solid var(--line);
-    border-inline-start:6px solid var(--line-strong);
-    border-radius:12px;
-    padding:10px 16px 12px;
+
+  table.d-table{ width:100%; border-collapse:separate; border-spacing:0; }
+  .d-table th{
+    font-size:22px; font-weight:800; text-align:center;
+    padding:6px 14px 10px; border-bottom:3px solid var(--line-strong);
   }
-  .d-card.seg-sound{ border-inline-start-color:var(--green); }
-  .d-card.seg-media{ border-inline-start-color:var(--blue); }
-  .d-card.seg-design{ border-inline-start-color:var(--orange); }
-  .d-card.seg-workshop{ border-inline-start-color:var(--red); }
-  .d-top{ display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
-  .d-time{ font-size:17px; font-weight:700; color:var(--muted); }
-  .d-text{ font-size:25px; line-height:1.3; margin-top:2px; }
-  .d-text b{ font-weight:700; }
-  .d-text s{ text-decoration:line-through; text-decoration-color:var(--red); text-decoration-thickness:3px; color:var(--muted2); opacity:0.8; }
-  .d-room{ font-size:17px; color:var(--muted); }
-  .d-card.now{ border-color:var(--text); box-shadow:0 0 0 2px var(--text); background:var(--surface2); }
-  .d-card.now .d-time{ color:var(--text); }
-  .d-card.done{ opacity:0.38; }
-  .d-foot{ border-top:2px solid var(--line-strong); padding-top:14px; text-align:center; }
-  .d-notes{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px 34px; font-size:24px; font-weight:700; }
-  .d-notes .t{ color:var(--muted); font-weight:600; margin-inline-start:8px; }
-  .d-tidy{ display:flex; flex-wrap:wrap; justify-content:center; gap:6px 28px; margin-top:10px; font-size:20px; color:var(--muted); }
-  .d-tidy b{ color:var(--text); }
+  .d-table th.seg-sound{ color:var(--green); border-bottom-color:var(--green); }
+  .d-table th.seg-media{ color:var(--blue); border-bottom-color:var(--blue); }
+  .d-table th.seg-design{ color:var(--orange); border-bottom-color:var(--orange); }
+  .d-table th.d-th-time{ border-bottom-color:transparent; }
+  .d-table td{ vertical-align:top; padding:12px 14px; border-bottom:1px solid var(--line); }
+  .d-table tr:last-child td{ border-bottom:none; }
+  .d-table .gstart{ border-inline-start:2px solid var(--line-strong); }
+  .d-tcell{ width:1%; white-space:nowrap; text-align:center; border-inline-end:2px solid var(--line-strong); }
+  .d-tl + .d-tl{ margin-top:10px; }
+  .d-tl .s{ font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:700; color:var(--text); }
+  .d-tl .e{ font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; color:var(--muted); margin-top:2px; }
+  .d-tl.seg-sound .s{ color:var(--green); }
+  .d-tl.seg-media .s{ color:var(--blue); }
+  .d-tl.seg-design .s{ color:var(--orange); }
+  .d-cell{ text-align:center; }
+  .d-l{ padding:2px 0; border-radius:8px; }
+  .d-l + .d-l{ border-top:1px dashed var(--line-strong); margin-top:8px; padding-top:8px; border-radius:0; }
+  .d-lroom{ font-size:16px; color:var(--muted); margin-bottom:1px; }
+  .d-ltext{ font-size:24px; line-height:1.25; }
+  .d-ltext b{ font-weight:700; }
+  .d-ltext s{ text-decoration:line-through; text-decoration-color:var(--red); text-decoration-thickness:3px; color:var(--muted2); opacity:0.8; }
+  .d-l.now, .d-chip.now{ outline:2px solid var(--text); outline-offset:3px; background:var(--surface2); border-radius:8px; }
+  .d-l.done, .d-chip.done{ opacity:0.38; }
+  .d-chips{ display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-start; }
+  .d-chip{
+    background:var(--surface); border:1px solid var(--line);
+    border-inline-start:6px solid var(--red); border-radius:12px;
+    padding:8px 16px 10px; min-width:200px; text-align:center;
+  }
 
   footer.credit{
     text-align:center;
@@ -636,7 +638,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v18</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v19</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -930,7 +932,7 @@ function parseDay(rows, dayName, merges, rawGrid){
             const candidate = visible[0] ? visible[0].text : timeVal;
             if (isNoteText(candidate)) note = candidate;
           }
-          entries.push({ time: timeVal, cells, note });
+          entries.push({ time: timeVal, cells, note, row: r });
         }
       } else {
         for (let r = h.rowIndex + 1; r <= end; r++) {
@@ -948,7 +950,7 @@ function parseDay(rows, dayName, merges, rawGrid){
             const candidate = nonEmpty[0] ? nonEmpty[0].text : timeVal;
             if (isNoteText(candidate)) note = candidate;
           }
-          entries.push({ time: timeVal, cells, note });
+          entries.push({ time: timeVal, cells, note, row: r });
         }
       }
       const rawHeaderCell = clean((rows[h.rowIndex] || [])[seg.timeCol]);
@@ -1055,7 +1057,7 @@ function renderFlatRows(seg, isToday, nowMinutes, tidyInfo, dayName, myLessons, 
   }).join('');
 }
 
-/* ---------------- display mode renderer (clean cards, no tables) ---------------- */
+/* ---------------- display mode renderer (clean table for the big screen) ---------------- */
 function collectDisplayItems(block, seg){
   const items = [];
   const entries = seg.entries;
@@ -1069,6 +1071,7 @@ function collectDisplayItems(block, seg){
       const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold, baseStrike: c.baseStrike }];
       subs.forEach(sub => {
         items.push({
+          row: e.row,
           start: e.time,
           end: isTime(end) ? end : '',
           room: c.name,
@@ -1083,51 +1086,74 @@ function collectDisplayItems(block, seg){
 }
 
 function renderDisplay(blocks, isToday, nowMinutes){
-  const cardHtml = it => {
+  const stateOf = it => {
     const s = timeToMinutes(it.start);
+    if (!isToday || s == null) return '';
     const en = it.end ? timeToMinutes(it.end) : null;
-    let st = '';
-    if (isToday && s != null) {
-      const endMin = en != null ? en : s + 45;
-      if (nowMinutes >= endMin) st = ' done';
-      else if (nowMinutes >= s) st = ' now';
-    }
-    const t = it.end ? `${it.start}–${it.end}` : it.start;
-    return `<div class="d-card ${it.cls}${st}"><div class="d-top"><span class="d-time mono">${escHtml(t)}</span><span class="d-room">${escHtml(it.room)}</span></div><div class="d-text">${it.html}</div></div>`;
+    const endMin = en != null ? en : s + 45;
+    if (nowMinutes >= endMin) return ' done';
+    if (nowMinutes >= s) return ' now';
+    return '';
   };
+  const lessonHtml = it => `<div class="d-l${stateOf(it)}"><div class="d-lroom">${escHtml(it.room)}</div><div class="d-ltext">${it.html}</div></div>`;
+  const chipHtml = it => `<div class="d-chip${stateOf(it)}"><div class="d-lroom">${escHtml(it.room)}${it.end ? ' · עד ' + escHtml(it.end) : ''}</div><div class="d-ltext">${it.html}</div></div>`;
 
-  const blocksHtml = blocks.map(block => {
+  return blocks.map(block => {
     const typeClass = block.type === "סדנאות" ? "type-sadnaot" : "type-magamot";
-    const cols = block.segments.map(seg => ({ seg, items: collectDisplayItems(block, seg) }));
-    let body;
-    if (block.segments.length > 1) {
-      body = `<div class="d-cols" style="grid-template-columns:repeat(${cols.length}, minmax(0, 1fr))">` +
-        cols.map(col => `<div class="d-col"><div class="d-col-title ${trackClass(col.seg, block.type)}">${escHtml(col.seg.groupName || '')}</div>${
-          col.items.length ? col.items.map(cardHtml).join('') : '<div class="d-empty">אין שיעורים</div>'
-        }</div>`).join('') + `</div>`;
-    } else {
-      const items = cols.length ? cols[0].items : [];
-      body = `<div class="d-list">${items.map(cardHtml).join('')}</div>`;
-    }
-    return `<section class="d-block ${typeClass}">
-      <div class="d-head"><span class="bar"></span><h2>${block.type || 'לוח יום'}</h2><span class="grade">${block.grade || ''}</span></div>
-      ${body}
-    </section>`;
-  }).join('');
+    const head = `<div class="d-head"><span class="bar"></span><h2>${block.type || 'לוח יום'}</h2><span class="grade">${block.grade || ''}</span></div>`;
+    const segItems = block.segments.map(seg => collectDisplayItems(block, seg));
+    let body = '';
 
-  // end-of-day line (cleanup, closing circle, buses) taken from the last block
-  const last = blocks[blocks.length - 1];
-  let foot = '';
-  if (last && last.segments.length) {
-    const notes = [];
-    last.segments[0].entries.forEach(e => {
-      if (e.note && !e.note.includes('הפסקה')) notes.push({ time: e.time, text: e.note });
-    });
-    const notesHtml = notes.length ? `<div class="d-notes">${notes.map(n => `<span>${escHtml(n.text)}<span class="t mono">${escHtml(n.time)}</span></span>`).join('')}</div>` : '';
-    const tidyHtml = (last.tidyInfo && last.tidyInfo.items.length) ? `<div class="d-tidy">${last.tidyInfo.items.map(t => `<span><b>${escHtml(t.label)}</b> ${escHtml(t.value || '')}</span>`).join('')}</div>` : '';
-    if (notesHtml || tidyHtml) foot = `<div class="d-foot">${notesHtml}${tidyHtml}</div>`;
-  }
-  return blocksHtml + foot;
+    if (block.segments.length > 1) {
+      // sound + media share one time column; every other track keeps its own
+      const groups = [];
+      block.segments.forEach((seg, si) => {
+        const cls = trackClass(seg, block.type);
+        const key = (cls === 'seg-sound' || cls === 'seg-media') ? 'sm' : 'g' + si;
+        let g = groups.find(x => x.key === key);
+        if (!g) { g = { key, idxs: [] }; groups.push(g); }
+        g.idxs.push(si);
+      });
+
+      const rowIds = [];
+      segItems.forEach(list => list.forEach(it => { if (rowIds.indexOf(it.row) === -1) rowIds.push(it.row); }));
+      rowIds.sort((a, b) => a - b);
+
+      const thead = '<tr>' + groups.map((g, gi) =>
+        `<th class="d-th-time${gi ? ' gstart' : ''}"></th>` +
+        g.idxs.map(si => `<th class="${trackClass(block.segments[si], block.type)}">${escHtml(block.segments[si].groupName || '')}</th>`).join('')
+      ).join('') + '</tr>';
+
+      const tbody = rowIds.map(r => '<tr>' + groups.map((g, gi) => {
+        const labels = [];
+        g.idxs.forEach(si => {
+          segItems[si].filter(it => it.row === r).forEach(it => {
+            if (!labels.some(l => l.start === it.start && l.end === it.end)) labels.push({ start: it.start, end: it.end, cls: it.cls });
+          });
+        });
+        const tl = labels.map(l =>
+          `<div class="d-tl${labels.length > 1 ? ' ' + l.cls : ''}"><div class="s">${escHtml(l.start)}</div>${l.end ? `<div class="e">${escHtml(l.end)}</div>` : ''}</div>`
+        ).join('');
+        const cells = g.idxs.map(si =>
+          `<td class="d-cell">${segItems[si].filter(it => it.row === r).map(lessonHtml).join('')}</td>`
+        ).join('');
+        return `<td class="d-tcell${gi ? ' gstart' : ''}">${tl}</td>${cells}`;
+      }).join('') + '</tr>').join('');
+
+      body = `<table class="d-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+    } else {
+      // single track (workshops): one row per start time, lessons side by side with their room
+      const items = segItems.length ? segItems[0] : [];
+      const starts = [];
+      items.forEach(it => { if (starts.indexOf(it.start) === -1) starts.push(it.start); });
+      starts.sort((a, b) => (timeToMinutes(a) || 0) - (timeToMinutes(b) || 0));
+      const tbody = starts.map(st =>
+        `<tr><td class="d-tcell"><div class="d-tl"><div class="s">${escHtml(st)}</div></div></td><td class="d-cell"><div class="d-chips">${items.filter(it => it.start === st).map(chipHtml).join('')}</div></td></tr>`
+      ).join('');
+      body = `<table class="d-table"><tbody>${tbody}</tbody></table>`;
+    }
+    return `<section class="d-block ${typeClass}">${head}${body}</section>`;
+  }).join('');
 }
 
 function renderBlocks(blocks, isToday, nowMinutes, dayName){
