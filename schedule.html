@@ -549,48 +549,58 @@
     max-width:none; padding:0; margin:0;
     transform-origin:top center;
   }
-  .d-block{ margin-bottom:28px; }
-  .d-head{ display:flex; align-items:baseline; gap:14px; margin:0 0 12px; }
-  .d-head .bar{ width:6px; height:28px; border-radius:3px; background:var(--text); }
+  .d-block{ margin-bottom:22px; }
+  .d-head{ display:flex; align-items:baseline; gap:14px; margin:0 0 10px; }
+  .d-head .bar{ width:6px; height:26px; border-radius:3px; background:var(--text); }
   .type-sadnaot .d-head .bar{ background:var(--red); }
-  .d-head h2{ font-size:30px; font-weight:800; margin:0; }
-  .d-head .grade{ font-size:20px; font-weight:600; color:var(--muted); }
+  .d-head h2{ font-size:28px; font-weight:800; margin:0; }
+  .d-head .grade{ font-size:19px; font-weight:600; color:var(--muted); }
   .type-sadnaot .d-head .grade{ color:var(--red); }
 
-  table.d-table{ width:100%; border-collapse:separate; border-spacing:0; }
+  /* tracks table (sound / media / design): each track has its own time column */
+  table.d-table, table.d-grid{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
   .d-table th{
-    font-size:22px; font-weight:800; text-align:center;
-    padding:6px 14px 10px; border-bottom:3px solid var(--line-strong);
+    font-size:21px; font-weight:800; text-align:center;
+    padding:4px 10px 8px; border-bottom:3px solid var(--line-strong);
   }
   .d-table th.seg-sound{ color:var(--green); border-bottom-color:var(--green); }
   .d-table th.seg-media{ color:var(--blue); border-bottom-color:var(--blue); }
   .d-table th.seg-design{ color:var(--orange); border-bottom-color:var(--orange); }
-  .d-table th.d-th-time{ border-bottom-color:transparent; }
-  .d-table td{ vertical-align:top; padding:12px 14px; border-bottom:1px solid var(--line); }
+  .d-table th.d-th-time, .d-grid th.d-th-time{ width:84px; border-bottom-color:transparent; }
+  .d-table td{ vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--line); }
   .d-table tr:last-child td{ border-bottom:none; }
   .d-table .gstart{ border-inline-start:2px solid var(--line-strong); }
-  .d-tcell{ width:1%; white-space:nowrap; text-align:center; border-inline-end:2px solid var(--line-strong); }
-  .d-tl + .d-tl{ margin-top:10px; }
-  .d-tl .s{ font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:700; color:var(--text); }
-  .d-tl .e{ font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; color:var(--muted); margin-top:2px; }
-  .d-tl.seg-sound .s{ color:var(--green); }
-  .d-tl.seg-media .s{ color:var(--blue); }
-  .d-tl.seg-design .s{ color:var(--orange); }
-  .d-cell{ text-align:center; }
-  .d-l{ padding:2px 0; border-radius:8px; }
-  .d-l + .d-l{ border-top:1px dashed var(--line-strong); margin-top:8px; padding-top:8px; border-radius:0; }
-  .d-lroom{ font-size:16px; color:var(--muted); margin-bottom:1px; }
-  .d-ltext{ font-size:24px; line-height:1.25; }
+  .d-tcell{ white-space:nowrap; text-align:center; border-inline-end:2px solid var(--line-strong); }
+  .d-tl .s{ font-family:'JetBrains Mono',monospace; font-size:21px; font-weight:700; color:var(--text); }
+  .d-tl .e{ font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:600; color:var(--muted); margin-top:2px; }
+  .d-lgrid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:8px; }
+  .d-l{
+    background:var(--surface); border:1px solid var(--line);
+    border-inline-start:5px solid var(--line-strong); border-radius:10px;
+    padding:5px 10px 7px; text-align:center;
+  }
+  .d-l.seg-sound{ border-inline-start-color:var(--green); }
+  .d-l.seg-media{ border-inline-start-color:var(--blue); }
+  .d-l.seg-design{ border-inline-start-color:var(--orange); }
+  .d-lroom{ font-size:15px; color:var(--muted); margin-bottom:1px; }
+  .d-ltext{ font-size:22px; line-height:1.25; }
   .d-ltext b{ font-weight:700; }
   .d-ltext s{ text-decoration:line-through; text-decoration-color:var(--red); text-decoration-thickness:3px; color:var(--muted2); opacity:0.8; }
-  .d-l.now, .d-chip.now{ outline:2px solid var(--text); outline-offset:3px; background:var(--surface2); border-radius:8px; }
-  .d-l.done, .d-chip.done{ opacity:0.38; }
-  .d-chips{ display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-start; }
-  .d-chip{
-    background:var(--surface); border:1px solid var(--line);
-    border-inline-start:6px solid var(--red); border-radius:12px;
-    padding:8px 16px 10px; min-width:200px; text-align:center;
+  .d-l.now{ outline:2px solid var(--text); outline-offset:2px; background:var(--surface2); }
+  .d-l.done{ opacity:0.38; }
+
+  /* rooms grid (workshops): one column per room, like the regular app */
+  .d-grid th{
+    font-size:18px; font-weight:700; color:var(--muted); text-align:center;
+    padding:4px 6px 8px; border-bottom:3px solid var(--red); line-height:1.2;
   }
+  .d-grid td{ border-bottom:1px solid var(--line); border-inline-start:1px solid var(--line); padding:0; height:40px; vertical-align:middle; }
+  .d-grid td.d-tcell{ padding:4px 6px; border-inline-start:none; }
+  .d-grid td.d-gcell{ background:rgba(217,83,79,0.30); padding:6px 8px; text-align:center; }
+  .d-grid td.d-gcell.now{ background:rgba(217,83,79,0.55); outline:2px solid var(--text); outline-offset:-2px; }
+  .d-grid td.d-gcell.done{ opacity:0.4; }
+  .d-grid .d-ltext{ font-size:21px; }
+  .d-gl + .d-gl{ border-top:1px dashed rgba(236,231,220,0.3); margin-top:6px; padding-top:6px; }
 
   footer.credit{
     text-align:center;
@@ -638,7 +648,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v19</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v20</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -1086,72 +1096,67 @@ function collectDisplayItems(block, seg){
 }
 
 function renderDisplay(blocks, isToday, nowMinutes){
-  const stateOf = it => {
-    const s = timeToMinutes(it.start);
-    if (!isToday || s == null) return '';
-    const en = it.end ? timeToMinutes(it.end) : null;
-    const endMin = en != null ? en : s + 45;
+  const stateOf = (start, end) => {
+    const st = timeToMinutes(start || '');
+    if (!isToday || st == null) return '';
+    const en = end ? timeToMinutes(end) : null;
+    const endMin = en != null ? en : st + 45;
     if (nowMinutes >= endMin) return ' done';
-    if (nowMinutes >= s) return ' now';
+    if (nowMinutes >= st) return ' now';
     return '';
   };
-  const lessonHtml = it => `<div class="d-l${stateOf(it)}"><div class="d-lroom">${escHtml(it.room)}</div><div class="d-ltext">${it.html}</div></div>`;
-  const chipHtml = it => `<div class="d-chip${stateOf(it)}"><div class="d-lroom">${escHtml(it.room)}${it.end ? ' · עד ' + escHtml(it.end) : ''}</div><div class="d-ltext">${it.html}</div></div>`;
+  const chipHtml = it => `<div class="d-l ${it.cls}${stateOf(it.start, it.end)}"><div class="d-lroom">${escHtml(it.room)}</div><div class="d-ltext">${it.html}</div></div>`;
+
+  // several tracks side by side, each with its own time column, lessons laid out sideways
+  const renderTracks = block => {
+    const segItems = block.segments.map(seg => collectDisplayItems(block, seg));
+    const rowIds = [];
+    segItems.forEach(list => list.forEach(it => { if (rowIds.indexOf(it.row) === -1) rowIds.push(it.row); }));
+    rowIds.sort((a, b) => a - b);
+    const thead = '<tr>' + block.segments.map((seg, si) =>
+      `<th class="d-th-time${si ? ' gstart' : ''}"></th><th class="${trackClass(seg, block.type)}">${escHtml(seg.groupName || '')}</th>`
+    ).join('') + '</tr>';
+    const tbody = rowIds.map(r => '<tr>' + block.segments.map((seg, si) => {
+      const its = segItems[si].filter(it => it.row === r);
+      const first = its[0];
+      const tl = first ? `<div class="d-tl"><div class="s">${escHtml(first.start)}</div>${first.end ? `<div class="e">${escHtml(first.end)}</div>` : ''}</div>` : '';
+      return `<td class="d-tcell${si ? ' gstart' : ''}">${tl}</td><td class="d-cell"><div class="d-lgrid">${its.map(chipHtml).join('')}</div></td>`;
+    }).join('') + '</tr>').join('');
+    return `<table class="d-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+  };
+
+  // one column per room, lessons as merged blocks (like the regular app, minus the noise)
+  const renderRooms = (block, seg) => {
+    const entries = seg.entries;
+    const kept = [];
+    entries.forEach((e, i) => { if (!e.note && isTime(e.time)) kept.push(i); });
+    if (!kept.length) return '';
+    const thead = '<tr><th class="d-th-time"></th>' + seg.rooms.map(r => `<th>${escHtml(r.name)}</th>`).join('') + '</tr>';
+    const tbody = kept.map(i => {
+      const e = entries[i];
+      let tds = `<td class="d-tcell"><div class="d-tl"><div class="s">${escHtml(e.time)}</div></div></td>`;
+      e.cells.forEach(c => {
+        if (c.skip) return;
+        if (!c.text) { tds += '<td></td>'; return; }
+        const span = c.span || 1;
+        let eff = 0;
+        kept.forEach(k => { if (k >= i && k < i + span) eff++; });
+        if (eff < 1) eff = 1;
+        const endEntry = entries[i + span];
+        const end = endEntry ? endEntry.time : '';
+        const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold, baseStrike: c.baseStrike }];
+        const inner = subs.map(sub => `<div class="d-gl"><div class="d-ltext">${formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike)}</div></div>`).join('');
+        tds += `<td class="d-gcell${stateOf(e.time, isTime(end) ? end : '')}" rowspan="${eff}">${inner}</td>`;
+      });
+      return `<tr>${tds}</tr>`;
+    }).join('');
+    return `<table class="d-grid"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+  };
 
   return blocks.map(block => {
     const typeClass = block.type === "סדנאות" ? "type-sadnaot" : "type-magamot";
     const head = `<div class="d-head"><span class="bar"></span><h2>${block.type || 'לוח יום'}</h2><span class="grade">${block.grade || ''}</span></div>`;
-    const segItems = block.segments.map(seg => collectDisplayItems(block, seg));
-    let body = '';
-
-    if (block.segments.length > 1) {
-      // sound + media share one time column; every other track keeps its own
-      const groups = [];
-      block.segments.forEach((seg, si) => {
-        const cls = trackClass(seg, block.type);
-        const key = (cls === 'seg-sound' || cls === 'seg-media') ? 'sm' : 'g' + si;
-        let g = groups.find(x => x.key === key);
-        if (!g) { g = { key, idxs: [] }; groups.push(g); }
-        g.idxs.push(si);
-      });
-
-      const rowIds = [];
-      segItems.forEach(list => list.forEach(it => { if (rowIds.indexOf(it.row) === -1) rowIds.push(it.row); }));
-      rowIds.sort((a, b) => a - b);
-
-      const thead = '<tr>' + groups.map((g, gi) =>
-        `<th class="d-th-time${gi ? ' gstart' : ''}"></th>` +
-        g.idxs.map(si => `<th class="${trackClass(block.segments[si], block.type)}">${escHtml(block.segments[si].groupName || '')}</th>`).join('')
-      ).join('') + '</tr>';
-
-      const tbody = rowIds.map(r => '<tr>' + groups.map((g, gi) => {
-        const labels = [];
-        g.idxs.forEach(si => {
-          segItems[si].filter(it => it.row === r).forEach(it => {
-            if (!labels.some(l => l.start === it.start && l.end === it.end)) labels.push({ start: it.start, end: it.end, cls: it.cls });
-          });
-        });
-        const tl = labels.map(l =>
-          `<div class="d-tl${labels.length > 1 ? ' ' + l.cls : ''}"><div class="s">${escHtml(l.start)}</div>${l.end ? `<div class="e">${escHtml(l.end)}</div>` : ''}</div>`
-        ).join('');
-        const cells = g.idxs.map(si =>
-          `<td class="d-cell">${segItems[si].filter(it => it.row === r).map(lessonHtml).join('')}</td>`
-        ).join('');
-        return `<td class="d-tcell${gi ? ' gstart' : ''}">${tl}</td>${cells}`;
-      }).join('') + '</tr>').join('');
-
-      body = `<table class="d-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
-    } else {
-      // single track (workshops): one row per start time, lessons side by side with their room
-      const items = segItems.length ? segItems[0] : [];
-      const starts = [];
-      items.forEach(it => { if (starts.indexOf(it.start) === -1) starts.push(it.start); });
-      starts.sort((a, b) => (timeToMinutes(a) || 0) - (timeToMinutes(b) || 0));
-      const tbody = starts.map(st =>
-        `<tr><td class="d-tcell"><div class="d-tl"><div class="s">${escHtml(st)}</div></div></td><td class="d-cell"><div class="d-chips">${items.filter(it => it.start === st).map(chipHtml).join('')}</div></td></tr>`
-      ).join('');
-      body = `<table class="d-table"><tbody>${tbody}</tbody></table>`;
-    }
+    const body = block.segments.length > 1 ? renderTracks(block) : renderRooms(block, block.segments[0]);
     return `<section class="d-block ${typeClass}">${head}${body}</section>`;
   }).join('');
 }
