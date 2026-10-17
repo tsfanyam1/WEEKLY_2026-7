@@ -505,6 +505,17 @@
     text-overflow:ellipsis;
   }
 
+  .cancel-box{ margin:0 0 14px; padding:12px 14px; border-radius:12px; border:1px solid rgba(229,72,77,0.55); background:rgba(229,72,77,0.12); }
+  .cancel-title{ font-weight:800; font-size:15px; color:#ff6b6f; margin-bottom:6px; }
+  .cancel-item{ display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; padding:4px 0; font-size:14px; border-top:1px solid rgba(229,72,77,0.25); }
+  .cancel-item:first-of-type{ border-top:none; }
+  .cancel-time{ font-weight:700; }
+  .cancel-room{ color:var(--muted); font-size:13px; }
+  .cancel-text{ font-weight:600; }
+  body.display-mode .cancel-box{ background:#fdeceb; border-color:#e5484d; padding:10px 18px; margin:6px 0 12px; }
+  body.display-mode .cancel-title{ color:#b4233f; font-size:clamp(14px,2.2vh,28px); }
+  body.display-mode .cancel-item{ font-size:clamp(13px,2vh,26px); color:#241a1a; border-top-color:rgba(180,35,63,0.2); }
+  body.display-mode .cancel-room{ color:#6b5757; font-size:clamp(12px,1.8vh,22px); }
   .my-hint{
     display:none;
     background:rgba(224,151,63,0.14);
@@ -695,7 +706,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v25</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v26</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -853,6 +864,54 @@ function formatCellHtml(rawText, runs, baseBold, baseStrike){
     }
   });
   return html.replace(/^(<br>)+/,"").replace(/(<br>)+$/,"");
+}
+/* ---------------- cancelled lessons (struck-through in the sheet) ---------------- */
+function isStruck(sub){
+  const text = String(sub.rawText || '');
+  let idx = 0; while (idx < text.length && /\s/.test(text[idx])) idx++;
+  let strike = !!sub.baseStrike;
+  const runs = sub.runs;
+  if (runs && runs.length) {
+    let cur = null;
+    for (const r of runs) { if ((r.startIndex || 0) <= idx) cur = r; else break; }
+    if (cur) { const f = cur.format || {}; strike = ('strikethrough' in f) ? !!f.strikethrough : !!sub.baseStrike; }
+  }
+  return strike;
+}
+function getSubs(c){
+  const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold, baseStrike: c.baseStrike }];
+  subs.forEach(sub => { if (sub.cancelled === undefined) sub.cancelled = isStruck(sub); });
+  return subs;
+}
+function collectCancellations(blocks){
+  const out = [];
+  blocks.forEach(block => block.segments.forEach(seg => {
+    const segKey = `${block.type}|${seg.groupName || ''}`;
+    seg.entries.forEach(e => {
+      if (e.note) return;
+      e.cells.forEach(c => {
+        if (c.skip || c.empty || !c.text) return;
+        getSubs(c).forEach((sub, si) => {
+          if (!sub.cancelled) return;
+          out.push({
+            key: `${segKey}|${c.name}|${e.time}|${si}`,
+            time: e.time,
+            room: (block.type === "מגמות" && seg.groupName) ? `${seg.groupName} · ${c.name}` : c.name,
+            text: clean(sub.rawText)
+          });
+        });
+      });
+    });
+  }));
+  out.sort((a, b) => (timeToMinutes(a.time) || 0) - (timeToMinutes(b.time) || 0));
+  return out;
+}
+function renderCancellations(blocks, dayName, onlyMine){
+  let list = collectCancellations(blocks);
+  if (onlyMine) { const mine = getMyLessons(dayName); list = list.filter(x => mine.has(x.key)); }
+  if (!list.length) return '';
+  const title = onlyMine ? 'ביטולים בשיעורים שלך' : `ביטולים · יום ${dayName}`;
+  return `<section class="cancel-box"><div class="cancel-title">❌ ${title}</div>${list.map(x => `<div class="cancel-item"><span class="cancel-time mono">${escHtml(x.time || '')}</span><span class="cancel-room">${escHtml(x.room)}</span><span class="cancel-text">${escHtml(x.text)}</span></div>`).join('')}</section>`;
 }
 function buildMergeMaps(merges){
   const topLeft = new Map();
@@ -1068,11 +1127,12 @@ function renderNormalRows(seg, isToday, nowMinutes, dayName, myLessons, segKey){
     }
     const cellsHtml = e.cells.map(c => {
       if (!c.text) return `<td class="empty"></td>`;
-      const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold, baseStrike: c.baseStrike }];
+      const subs = getSubs(c);
       const subsHtml = subs.map((sub, si) => {
+        if (sub.cancelled) return '';
         const key = `${segKey}|${c.name}|${e.time}|${si}`;
         const mine = myLessons.has(key);
-        return `<div class="sub-lesson${mine?' mine-lesson':''}"><button class="star-btn lesson-star${mine?' on':''}" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">${mine?'★':'☆'}</button>${formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike)}</div>`;
+        return `<div class="sub-lesson${mine?' mine-lesson':''}"><button class="star-btn lesson-star"${mine?' on':''}" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">${mine?'★':'☆'}</button>${formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike)}</div>`;
       }).join('');
       return `<td>${subsHtml}</td>`;
     }).join('');
@@ -1102,9 +1162,10 @@ function renderFlatRows(seg, isToday, nowMinutes, tidyInfo, dayName, myLessons, 
     e.cells.forEach(c => {
       if (c.skip) return;
       if (c.empty) { tds += `<td class="empty"></td>`; return; }
-      const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold, baseStrike: c.baseStrike }];
+      const subs = getSubs(c);
       const isNoteRoom = isTimeNoteRoom(c.name);
       const subsHtml = subs.map((sub, si) => {
+        if (sub.cancelled) return '';
         const key = `${segKey}|${c.name}|${e.time}|${si}`;
         const mine = myLessons.has(key);
         const note = isNoteRoom ? getMyNote(dayName, key) : '';
@@ -1128,8 +1189,9 @@ function collectDisplayItems(block, seg){
       const span = c.span || 1;
       const endEntry = entries[i + span];
       const end = endEntry ? endEntry.time : '';
-      const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold, baseStrike: c.baseStrike }];
+      const subs = getSubs(c);
       subs.forEach(sub => {
+        if (sub.cancelled) return;
         items.push({
           row: e.row,
           start: e.time,
@@ -1210,8 +1272,9 @@ function renderDisplay(blocks, isToday, nowMinutes){
         if (eff < 1) eff = 1;
         const endEntry = entries[i + span];
         const end = endEntry ? endEntry.time : '';
-        const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold, baseStrike: c.baseStrike }];
-        const inner = subs.map(sub => `<div class="d-gl"><div class="d-ltext">${formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike)}</div></div>`).join('');
+        const subs = getSubs(c);
+        const inner = subs.filter(sub => !sub.cancelled).map(sub => `<div class="d-gl"><div class="d-ltext">${formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike)}</div></div>`).join('');
+        if (!inner) { tds += `<td class="d-lane-c" rowspan="${eff}"></td>`; return; }
         tds += `<td class="d-gcell${stateOf(e.time, isTime(end) ? end : '')}" rowspan="${eff}">${inner}</td>`;
       });
       tds += `<td class="d-gap${isLast ? ' shell-l' : ''}"></td>`;
@@ -1277,8 +1340,9 @@ function renderPersonalAgenda(blocks, dayName){
         if (e.note) return;
         e.cells.forEach(c => {
           if (c.skip || c.empty || !c.text) return;
-          const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold, baseStrike: c.baseStrike }];
+          const subs = getSubs(c);
           subs.forEach((sub, si) => {
+            if (sub.cancelled) return;
             const key = `${segKey}|${c.name}|${e.time}|${si}`;
             if (myLessons.has(key)) {
               const isNoteRoom = isTimeNoteRoom(c.name);
@@ -1382,7 +1446,8 @@ async function loadDay(dayIdx, { force=false, silent=false } = {}){
     </div>`;
     return;
   }
-  main.innerHTML = (isPersonalMode() && !DISPLAY_MODE) ? renderPersonalAgenda(blocks, day.name) : renderBlocks(blocks, isToday, nowMinutes, day.name);
+  const personalView = isPersonalMode() && !DISPLAY_MODE;
+  main.innerHTML = renderCancellations(blocks, day.name, personalView) + (personalView ? renderPersonalAgenda(blocks, day.name) : renderBlocks(blocks, isToday, nowMinutes, day.name));
   if (DISPLAY_MODE) fitDisplay();
 }
 
@@ -1472,7 +1537,8 @@ function rerenderCurrent(){
   const todayName = JS_DAY_TO_NAME[now.getDay()];
   const isToday = todayName === day.name;
   const nowMinutes = now.getHours()*60 + now.getMinutes();
-  document.getElementById('main').innerHTML = (isPersonalMode() && !DISPLAY_MODE) ? renderPersonalAgenda(blocks, day.name) : renderBlocks(blocks, isToday, nowMinutes, day.name);
+  const personalView = isPersonalMode() && !DISPLAY_MODE;
+  document.getElementById('main').innerHTML = renderCancellations(blocks, day.name, personalView) + (personalView ? renderPersonalAgenda(blocks, day.name) : renderBlocks(blocks, isToday, nowMinutes, day.name));
   if (DISPLAY_MODE) fitDisplay();
 }
 
