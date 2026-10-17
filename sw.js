@@ -1,4 +1,4 @@
-const CACHE_NAME = 'schedule-shell-v2';
+const CACHE_NAME = 'schedule-shell-v3';
 const SHELL_FILES = [
   './schedule.html',
   './manifest.json',
@@ -22,9 +22,6 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Network-first: always try to get the freshest file first (so code updates show immediately).
-// Only fall back to the cached copy if there's no internet connection.
-// API calls (sheets.googleapis.com) are never cached - schedule data must always be live.
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
   if (url.includes('sheets.googleapis.com')) return;
@@ -40,5 +37,32 @@ self.addEventListener('fetch', (event) => {
         return networkResponse;
       })
       .catch(() => caches.match(event.request))
+  );
+});
+
+self.addEventListener('push', (event) => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch (e) { d = { body: event.data ? event.data.text() : '' }; }
+  const opts = {
+    body: d.body || '',
+    icon: 'icon-192.png',
+    badge: 'icon-192.png',
+    dir: 'rtl',
+    lang: 'he',
+    vibrate: [200, 100, 200],
+    data: { url: d.url || './schedule.html' }
+  };
+  if (d.tag) { opts.tag = d.tag; opts.renotify = true; }
+  event.waitUntil(self.registration.showNotification(d.title || 'מערכת שבועית', opts));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || './schedule.html', self.registration.scope).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) { if ('focus' in c) return c.focus(); }
+      return self.clients.openWindow(target);
+    })
   );
 });
