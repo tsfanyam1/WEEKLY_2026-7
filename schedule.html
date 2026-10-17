@@ -1117,3 +1117,659 @@ function renderFlatRows(seg, isToday, nowMinutes, tidyInfo, dayName, myLessons, 
 
 /* ---------------- display mode renderer (clean table for the big screen) ---------------- */
 function collectDisplayItems(block, seg){
+  const items = [];
+  const entries = seg.entries;
+  entries.forEach((e, i) => {
+    if (e.note) return;
+    e.cells.forEach(c => {
+      if (c.skip || c.empty || !c.text) return;
+      const span = c.span || 1;
+      const endEntry = entries[i + span];
+      const end = endEntry ? endEntry.time : '';
+      const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold, baseStrike: c.baseStrike }];
+      subs.forEach(sub => {
+        items.push({
+          row: e.row,
+          start: e.time,
+          end: isTime(end) ? end : '',
+          room: c.name,
+          html: formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike),
+          cls: trackClass(seg, block.type)
+        });
+      });
+    });
+  });
+  items.sort((a, b) => (timeToMinutes(a.start) || 0) - (timeToMinutes(b.start) || 0));
+  return items;
+}
+
+function renderDisplay(blocks, isToday, nowMinutes){
+  const stateOf = (start, end) => {
+    const st = timeToMinutes(start || '');
+    if (!isToday || st == null) return '';
+    const en = end ? timeToMinutes(end) : null;
+    const endMin = en != null ? en : st + 45;
+    if (nowMinutes >= endMin) return ' done';
+    if (nowMinutes >= st) return ' now';
+    return '';
+  };
+  const chipHtml = it => `<div class="d-l ${it.cls}${stateOf(it.start, it.end)}"><div class="d-lroom">${escHtml(it.room)}</div><div class="d-ltext">${it.html}</div></div>`;
+
+  // tracks as separate lanes: solid header, own time column, lessons laid out sideways
+  const renderTracks = block => {
+    const segItems = block.segments.map(seg => collectDisplayItems(block, seg));
+    const rowIds = [];
+    segItems.forEach(list => list.forEach(it => { if (rowIds.indexOf(it.row) === -1) rowIds.push(it.row); }));
+    rowIds.sort((a, b) => a - b);
+    const colgroup = '<colgroup>' + block.segments.map((seg, si) =>
+      (si ? '<col class="c-gap">' : '') + '<col class="c-time"><col>'
+    ).join('') + '</colgroup>';
+    const thead = '<tr>' + block.segments.map((seg, si) =>
+      (si ? '<th class="d-gap"></th>' : '') +
+      `<th colspan="2" class="d-lane-h ${trackClass(seg, block.type)}">${escHtml(seg.groupName || '')}</th>`
+    ).join('') + '</tr>';
+    const tbody = rowIds.map((r, ri) => `<tr${ri === rowIds.length - 1 ? ' class="last-row"' : ''}>` + block.segments.map((seg, si) => {
+      const cls = trackClass(seg, block.type);
+      const its = segItems[si].filter(it => it.row === r);
+      const first = its[0];
+      const tl = first ? `<div class="d-tl"><div class="s">${escHtml(first.start)}</div>${first.end ? `<div class="e">${escHtml(first.end)}</div>` : ''}</div>` : '';
+      return (si ? '<td class="d-gap"></td>' : '') +
+        `<td class="d-tcell ${cls}">${tl}</td><td class="d-cell ${cls}"><div class="d-lgrid">${its.map(chipHtml).join('')}</div></td>`;
+    }).join('') + '</tr>').join('');
+    return `<table class="d-table">${colgroup}<thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+  };
+
+  // one shell for all the workshops: time column + a lane for every room that has a lesson today
+  const renderRooms = (block, seg) => {
+    const entries = seg.entries;
+    const kept = [];
+    entries.forEach((e, i) => { if (!e.note && isTime(e.time)) kept.push(i); });
+    if (!kept.length) return '';
+    const used = [];
+    seg.rooms.forEach((r, ci) => {
+      if (entries.some(e => !e.note && e.cells[ci] && !e.cells[ci].skip && e.cells[ci].text)) used.push(ci);
+    });
+    if (!used.length) return '';
+    const lastKept = kept[kept.length - 1];
+    const colgroup = '<colgroup><col class="c-time">' + used.map(() => '<col class="c-gap"><col>').join('') + '<col class="c-gap"></colgroup>';
+    const thead = '<tr><th class="d-th-time"></th>' + used.map(ci => `<th class="d-gap"></th><th>${escHtml(seg.rooms[ci].name)}</th>`).join('') + '<th class="d-gap"></th></tr>';
+    const tbody = kept.map(i => {
+      const e = entries[i];
+      const isLast = i === lastKept;
+      let tds = `<td class="d-tcell${isLast ? ' shell-r' : ''}"><div class="d-tl"><div class="s">${escHtml(e.time)}</div></div></td>`;
+      used.forEach(ci => {
+        tds += '<td class="d-gap"></td>';
+        const c = e.cells[ci];
+        if (!c || c.skip) return;
+        if (!c.text) { tds += '<td class="d-lane-c"></td>'; return; }
+        const span = c.span || 1;
+        let eff = 0;
+        kept.forEach(k => { if (k >= i && k < i + span) eff++; });
+        if (eff < 1) eff = 1;
+        const endEntry = entries[i + span];
+        const end = endEntry ? endEntry.time : '';
+        const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold, baseStrike: c.baseStrike }];
+        const inner = subs.map(sub => `<div class="d-gl"><div class="d-ltext">${formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike)}</div></div>`).join('');
+        tds += `<td class="d-gcell${stateOf(e.time, isTime(end) ? end : '')}" rowspan="${eff}">${inner}</td>`;
+      });
+      tds += `<td class="d-gap${isLast ? ' shell-l' : ''}"></td>`;
+      return `<tr>${tds}</tr>`;
+    }).join('');
+    return `<table class="d-grid">${colgroup}<thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+  };
+
+  return blocks.map(block => {
+    const typeClass = block.type === "סדנאות" ? "type-sadnaot" : "type-magamot";
+    const head = `<div class="d-head"><span class="bar"></span><h2>${block.type || 'לוח יום'}</h2><span class="grade">${block.grade || ''}</span></div>`;
+    const body = block.segments.length > 1 ? renderTracks(block) : renderRooms(block, block.segments[0]);
+    return `<section class="d-block ${typeClass}">${head}${body}</section>`;
+  }).join('');
+}
+
+function renderBlocks(blocks, isToday, nowMinutes, dayName){
+  if (DISPLAY_MODE) return renderDisplay(blocks, isToday, nowMinutes);
+  const myTrack = DISPLAY_MODE ? '' : getMyTrack();
+  const myLessons = DISPLAY_MODE ? new Set() : getMyLessons(dayName);
+  const hint = (!myTrack && !DISPLAY_MODE) ? `<div class="my-hint" style="display:block">טיפ: לחץ על ה-☆ ליד שם המגמה שלך כדי לסמן אותה, ועל ה-☆ ליד כל שיעור כדי לסמן אותו כשלך.</div>` : '';
+  return hint + blocks.map(block => {
+    const typeClass = block.type === "סדנאות" ? "type-sadnaot" : "type-magamot";
+    const segmentsHtml = block.segments.map(seg => {
+      if (!seg.entries.length) return '';
+      const cls = trackClass(seg, block.type);
+      const isTrackSeg = block.type === "מגמות" && seg.groupName;
+      const mineTrack = isTrackSeg && seg.groupName === myTrack;
+      const segKey = `${block.type}|${seg.groupName || ''}`;
+      const rowsHtml = seg.isFlat ? renderFlatRows(seg, isToday, nowMinutes, block.tidyInfo, dayName, myLessons, segKey) : renderNormalRows(seg, isToday, nowMinutes, dayName, myLessons, segKey);
+      const starHtml = isTrackSeg ? `<button class="star-btn track-star${mineTrack?' on':''}" data-track="${escHtml(seg.groupName)}">${mineTrack?'★':'☆'}</button>` : '';
+      return `<div class="segment ${cls}${mineTrack?' mine-track':''}">
+        ${seg.groupName ? `<div class="seg-title">${seg.groupName}${starHtml}</div>` : ''}
+        <div class="table-scroll">
+        <table class="grid" style="min-width:${Math.max(320, seg.rooms.length*76 + 56)}px">
+          <thead><tr><th></th>${seg.rooms.map(r=>`<th>${r.name}</th>`).join('')}</tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<section class="block ${typeClass}">
+      <div class="block-head">
+        <span class="bar"></span>
+        <h2>${block.type || 'לוח יום'}</h2>
+        <span class="grade">${block.grade || ''}</span>
+      </div>
+      <div class="segments">${segmentsHtml}</div>
+    </section>`;
+  }).join('');
+}
+
+function renderPersonalAgenda(blocks, dayName){
+  const myLessons = getMyLessons(dayName);
+  const sections = blocks.map(block => {
+    const items = [];
+    block.segments.forEach(seg => {
+      const segKey = `${block.type}|${seg.groupName || ''}`;
+      seg.entries.forEach(e => {
+        if (e.note) return;
+        e.cells.forEach(c => {
+          if (c.skip || c.empty || !c.text) return;
+          const subs = (c.subLessons && c.subLessons.length) ? c.subLessons : [{ rawText: c.rawText, runs: c.runs, baseBold: c.baseBold, baseStrike: c.baseStrike }];
+          subs.forEach((sub, si) => {
+            const key = `${segKey}|${c.name}|${e.time}|${si}`;
+            if (myLessons.has(key)) {
+              const isNoteRoom = isTimeNoteRoom(c.name);
+              const roomLabel = (block.type === "מגמות" && seg.groupName) ? `${seg.groupName} · ${c.name}` : c.name;
+              items.push({
+                time: e.time,
+                room: roomLabel,
+                html: formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike),
+                cls: trackClass(seg, block.type),
+                note: isNoteRoom ? getMyNote(dayName, key) : ''
+              });
+            }
+          });
+        });
+      });
+    });
+    items.sort((a,b) => (timeToMinutes(a.time)||0) - (timeToMinutes(b.time)||0));
+    return { block, items };
+  });
+
+  const total = sections.reduce((n, sec) => n + sec.items.length, 0);
+  if (!total) {
+    return `<div class="my-hint" style="display:block">עדיין לא סימנת שיעורים ליום הזה. חזור לתצוגה הרגילה (לחץ שוב על "המערכת שלי") ולחץ על ה-☆ ליד כל שיעור שלך.</div>`;
+  }
+
+  return sections.map(({ block, items }) => {
+    const typeClass = block.type === "סדנאות" ? "type-sadnaot" : "type-magamot";
+    const body = items.length
+      ? `<div class="agenda">${items.map(it => `
+        <div class="agenda-item ${it.cls}">
+          <div class="agenda-time mono">${it.note || it.time}</div>
+          <div class="agenda-body">
+            <div class="agenda-room">${escHtml(it.room)}</div>
+            <div class="agenda-text">${it.html}</div>
+          </div>
+        </div>`).join('')}</div>`
+      : `<div class="agenda-empty">לא סימנת כאן שיעורים</div>`;
+    return `<section class="block ${typeClass}">
+      <div class="block-head">
+        <span class="bar"></span>
+        <h2>${block.type || 'לוח יום'}</h2>
+        <span class="grade">${block.grade || ''}</span>
+      </div>
+      ${body}
+    </section>`;
+  }).join('');
+}
+
+/* ---------------- fetch + orchestration ---------------- */
+async function loadDay(dayIdx, { force=false, silent=false } = {}){
+  const day = DAYS[dayIdx];
+  const now0 = new Date();
+  const isTodayTab = JS_DAY_TO_NAME[now0.getDay()] === day.name;
+  const fetchName = (isTodayTab && todayOverrideSheet) ? todayOverrideSheet : day.name;
+  const main = document.getElementById('main');
+  const stateBox = `<div class="state-box" id="stateBox"><div class="spinner"></div>טוען את יום ${day.name}...</div>`;
+
+  if (!cache[day.gid] || force) {
+    if (!silent) main.innerHTML = stateBox;
+    try {
+      const res = await fetch(sheetsApiUrl(fetchName), { cache: 'no-store' });
+      const json = await res.json();
+      if (!res.ok) throw new Error((json.error && json.error.message) || ('bad status ' + res.status));
+      const sheet = (json.sheets || [])[0];
+      const rowData = (sheet && sheet.data && sheet.data[0] && sheet.data[0].rowData) || [];
+      const rows = rowData.map(rd => (rd.values || []).map(v => (v && v.formattedValue) || ""));
+      const rawGrid = rowData.map(rd => (rd.values || []).map(v => ({ text: (v && v.formattedValue) || "", runs: (v && v.textFormatRuns) || null, baseBold: !!(v && v.effectiveFormat && v.effectiveFormat.textFormat && v.effectiveFormat.textFormat.bold), baseStrike: !!(v && v.effectiveFormat && v.effectiveFormat.textFormat && v.effectiveFormat.textFormat.strikethrough) })));
+      const merges = (sheet && sheet.merges) || [];
+      cache['__raw_' + day.gid] = rows;
+      cache['__merges_' + day.gid] = merges;
+      cache['__rawgrid_' + day.gid] = rawGrid;
+      cache[day.gid] = parseDay(rows, day.name, merges, rawGrid);
+    } catch (err) {
+      console.error(err);
+      if (silent) return; // keep showing the last good data on the big screen
+      main.innerHTML = `<div class="state-box">
+        לא הצלחתי לטעון את יום ${day.name} כרגע.<br>
+        <span style="font-size:11px">${(err && err.message) ? err.message : ''}</span><br>
+        ודא שהשיטס משותף כ"כל מי שיש לו את הקישור - צפייה", ושמפתח ה-API תקין ומאושר לדומיין הזה.
+        <br><button class="retry" onclick="loadDay(${dayIdx}, {force:true})">נסה שוב</button>
+      </div>`;
+      return;
+    }
+  }
+
+  const now = new Date();
+  const todayName = JS_DAY_TO_NAME[now.getDay()];
+  const isToday = todayName === day.name;
+  const nowMinutes = now.getHours()*60 + now.getMinutes();
+
+  const blocks = cache[day.gid];
+  if (!blocks.length) {
+    const raw = cache['__raw_' + day.gid] || [];
+    const dump = raw.slice(0, 40).map((r,i) => `${i}: ${JSON.stringify(r)}`).join('\n');
+    main.innerHTML = `<div class="state-box" style="text-align:right;direction:ltr">
+      <div style="direction:rtl;text-align:center;margin-bottom:14px">לא נמצאו נתונים ליום ${day.name}. יש לי כאן את השורות הגולמיות שהתקבלו - העתק את הכל ושלח לי:</div>
+      <textarea readonly style="width:100%;height:340px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:11px" onclick="this.select()">${dump}</textarea>
+    </div>`;
+    return;
+  }
+  main.innerHTML = (isPersonalMode() && !DISPLAY_MODE) ? renderPersonalAgenda(blocks, day.name) : renderBlocks(blocks, isToday, nowMinutes, day.name);
+  if (DISPLAY_MODE) fitDisplay();
+}
+
+function buildTabs(){
+  const nav = document.getElementById('dayTabs');
+  const now = new Date();
+  const todayName = JS_DAY_TO_NAME[now.getDay()];
+  nav.innerHTML = DAYS.map((d,i) => `<button data-idx="${i}" class="${d.name===todayName?'today':''}${(d.name===todayName && todayOverrideSheet)?' special':''}">${d.name}<span class="dot"></span></button>`).join('');
+  nav.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      nav.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      loadDay(parseInt(btn.dataset.idx,10));
+    });
+  });
+}
+
+function pickInitialDay(){
+  const now = new Date();
+  const todayName = JS_DAY_TO_NAME[now.getDay()];
+  const idx = DAYS.findIndex(d => d.name === todayName);
+  return idx === -1 ? 0 : idx;
+}
+
+function tickClock(){
+  const now = new Date();
+  if (DISPLAY_MODE) document.querySelector('header.top h1').textContent = 'מערכת שבועית · יום ' + DAYS[pickInitialDay()].name;
+  document.getElementById('todayLabel').textContent = JS_DAY_TO_NAME[now.getDay()];
+  document.getElementById('clockTime').textContent =
+    String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+}
+
+function extractDMY(s){
+  const nums = (s||"").match(/\d+/g);
+  if (!nums || nums.length < 3) return null;
+  let [d,m,y] = nums.map(n=>parseInt(n,10));
+  if (y < 100) y += 2000;
+  return { d, m, y };
+}
+
+async function checkExceptions(){
+  const withTimeout = (promise, ms) => Promise.race([
+    promise,
+    new Promise((resolve) => setTimeout(() => resolve(null), ms))
+  ]);
+  try {
+    const res = await withTimeout(fetch(sheetsApiUrl(EXCEPTIONS_TAB), { cache: 'no-store' }), 5000);
+    if (!res) return false; // timed out - don't block the app
+    const json = await res.json();
+    if (!res.ok) return false;
+    const sheet = (json.sheets || [])[0];
+    const rowData = (sheet && sheet.data && sheet.data[0] && sheet.data[0].rowData) || [];
+    const rows = rowData.map(rd => (rd.values || []).map(v => (v && v.formattedValue) || ""));
+    const now = new Date();
+    const today = { d: now.getDate(), m: now.getMonth()+1, y: now.getFullYear() };
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r] || [];
+      const dmy = extractDMY(row[0]);
+      if (!dmy) continue;
+      if (dmy.d === today.d && dmy.m === today.m && dmy.y === today.y) {
+        const message = clean(row[1] || "");
+        const altSheet = clean(row[2] || "");
+        if (altSheet) todayOverrideSheet = altSheet;
+        const banner = document.getElementById('exceptionBanner');
+        const text = message || (altSheet ? `היום יש שינוי במערכת` : '');
+        if (text) {
+          banner.innerHTML = `<button class="close-x" onclick="document.getElementById('exceptionBanner').style.display='none'">✕</button>${escHtml(text)}`;
+          banner.style.display = 'block';
+        }
+        return !!(text || altSheet);
+      }
+    }
+    return false;
+  } catch (err) {
+    console.error('exceptions check failed', err);
+    return false;
+  }
+}
+
+function rerenderCurrent(){
+  const activeBtn = document.querySelector('nav.days button.active') || document.querySelector('nav.days button');
+  const dayIdx = parseInt(activeBtn.dataset.idx, 10);
+  const day = DAYS[dayIdx];
+  const blocks = cache[day.gid];
+  if (!blocks) return;
+  const now = new Date();
+  const todayName = JS_DAY_TO_NAME[now.getDay()];
+  const isToday = todayName === day.name;
+  const nowMinutes = now.getHours()*60 + now.getMinutes();
+  document.getElementById('main').innerHTML = (isPersonalMode() && !DISPLAY_MODE) ? renderPersonalAgenda(blocks, day.name) : renderBlocks(blocks, isToday, nowMinutes, day.name);
+  if (DISPLAY_MODE) fitDisplay();
+}
+
+document.getElementById('main').addEventListener('click', (ev) => {
+  const trackBtn = ev.target.closest('.track-star');
+  if (trackBtn) {
+    setMyTrack(trackBtn.dataset.track);
+    rerenderCurrent();
+    return;
+  }
+  const lessonBtn = ev.target.closest('.lesson-star');
+  if (lessonBtn) {
+    const day = lessonBtn.dataset.day, key = lessonBtn.dataset.key;
+    toggleMyLesson(day, key);
+    const mine = getMyLessons(day).has(key);
+    lessonBtn.classList.toggle('on', mine);
+    lessonBtn.textContent = mine ? '★' : '☆';
+    const subEl = lessonBtn.closest('.sub-lesson');
+    if (subEl) subEl.classList.toggle('mine-lesson', mine);
+    if (subEl) {
+      const parts = key.split('|');
+      const room = parts[2];
+      const isNoteRoom = isTimeNoteRoom(room);
+      let noteBtn = subEl.querySelector('.note-btn');
+      if (isNoteRoom && mine && !noteBtn) {
+        noteBtn = document.createElement('button');
+        noteBtn.className = 'star-btn note-btn';
+        noteBtn.dataset.day = day;
+        noteBtn.dataset.key = key;
+        const existing = getMyNote(day, key);
+        noteBtn.textContent = existing ? `✎ ${existing}` : '✎ הוסף שעה';
+        subEl.appendChild(noteBtn);
+      } else if (noteBtn && !mine) {
+        noteBtn.remove();
+      }
+    }
+    return;
+  }
+  const noteBtn = ev.target.closest('.note-btn');
+  if (noteBtn) {
+    const day = noteBtn.dataset.day, key = noteBtn.dataset.key;
+    const current = getMyNote(day, key);
+    const val = prompt('באיזו שעה תגיע לשיעור הזה?', current);
+    if (val !== null) {
+      setMyNote(day, key, val.trim());
+      noteBtn.textContent = val.trim() ? `✎ ${val.trim()}` : '✎ הוסף שעה';
+    }
+    return;
+  }
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (!confirm('לאפס את כל הבחירות שלך (מגמה, שיעורים מסומנים ושעות אישיות)? לא ניתן לבטל.')) return;
+  resetAllChoices();
+  rerenderCurrent();
+});
+
+const myToggleBtn = document.getElementById('myToggle');
+function syncMyToggleUI(){
+  const on = isPersonalMode();
+  myToggleBtn.classList.toggle('on', on);
+}
+myToggleBtn.addEventListener('click', () => {
+  setPersonalMode(!isPersonalMode());
+  syncMyToggleUI();
+  rerenderCurrent();
+});
+syncMyToggleUI();
+
+document.getElementById('refreshBtn').addEventListener('click', () => {
+  const activeBtn = document.querySelector('nav.days button.active') || document.querySelector('nav.days button');
+  loadDay(parseInt(activeBtn.dataset.idx,10), { force:true });
+});
+
+document.getElementById('debugBtn').addEventListener('click', () => {
+  const panel = document.getElementById('debugPanel');
+  const activeBtn = document.querySelector('nav.days button.active') || document.querySelector('nav.days button');
+  const day = DAYS[parseInt(activeBtn.dataset.idx,10)];
+  const rows = cache['__raw_' + day.gid] || [];
+  const merges = cache['__merges_' + day.gid] || [];
+  const rawGrid = cache['__rawgrid_' + day.gid] || [];
+  document.getElementById('debugRows').value = rows.map((r,i) => `${i}: ${JSON.stringify(r)}`).join('\n');
+  document.getElementById('debugMerges').value = JSON.stringify(merges, null, 1);
+  const runsLines = [];
+  rawGrid.forEach((row, ri) => {
+    row.forEach((cell, ci) => {
+      if (cell && cell.text) runsLines.push(`[${ri},${ci}] "${cell.text}" baseBold=${cell.baseBold} runs=${JSON.stringify(cell.runs)}`);
+    });
+  });
+  document.getElementById('debugRuns').value = runsLines.join('\n');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+});
+
+/* ---------------- display mode: fit everything on one screen ---------------- */
+function fitDisplay(){
+  if (!DISPLAY_MODE) return;
+  const main = document.getElementById('main');
+  const header = document.querySelector('header.top');
+  const banner = document.getElementById('exceptionBanner');
+  const topH = (banner && banner.style.display !== 'none' ? banner.offsetHeight : 0) + header.offsetHeight;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const availH = Math.max(100, vh - topH - 18);
+  main.style.transform = 'none';
+
+  // lay the content out at width W and report the width it really needs and its height
+  function measure(W){
+    main.style.width = W + 'px';
+    const kids = Array.prototype.slice.call(main.children);
+    let w = W;
+    if (kids.length) {
+      const rects = kids.map(k => k.getBoundingClientRect());
+      const span = Math.max.apply(null, rects.map(r => r.right)) - Math.min.apply(null, rects.map(r => r.left));
+      w = Math.max(W, Math.ceil(span));
+    }
+    if (w > W) main.style.width = w + 'px';
+    return { W: w, H: main.offsetHeight };
+  }
+
+  let best = null;
+  for (let W = 900; W <= 3600; W += 100) {
+    const m = measure(W);
+    if (!m.H) continue;
+    const scale = Math.min(vw / m.W, availH / m.H);
+    if (!best || scale > best.scale) best = { scale, W: m.W };
+  }
+  if (!best) return;
+  main.style.width = best.W + 'px';
+  main.style.marginLeft = (-best.W / 2) + 'px';
+  main.style.top = (topH + 4) + 'px';
+  main.style.transform = 'scale(' + best.scale + ')';
+}
+
+buildTabs();
+tickClock();
+setInterval(tickClock, 30000);
+const initialIdx = pickInitialDay();
+const initialBtn = document.querySelector(`nav.days button[data-idx="${initialIdx}"]`);
+if (initialBtn) initialBtn.classList.add('active');
+loadDay(initialIdx);
+checkExceptions().then((changed) => {
+  if (!changed) return;
+  buildTabs();
+  const activeBtn = document.querySelector('nav.days button.active') || document.querySelector('nav.days button');
+  if (activeBtn) {
+    document.querySelectorAll('nav.days button').forEach(b=>b.classList.remove('active'));
+    activeBtn.classList.add('active');
+  }
+  loadDay(pickInitialDay(), { force:true });
+});
+
+if (DISPLAY_MODE) {
+  let shownIdx = pickInitialDay();
+  // every minute: move the "now" marker, and switch day after midnight
+  setInterval(() => {
+    const idx = pickInitialDay();
+    document.querySelectorAll('nav.days button').forEach(b => b.classList.remove('active'));
+    const btn = document.querySelector(`nav.days button[data-idx="${idx}"]`);
+    if (btn) btn.classList.add('active');
+    if (idx !== shownIdx) { shownIdx = idx; loadDay(idx, { force:true, silent:true }); }
+    else rerenderCurrent();
+  }, 60000);
+  // every 3 minutes: quietly re-read the sheet (no spinner, no flicker)
+  setInterval(() => loadDay(shownIdx, { force:true, silent:true }), 180000);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitDisplay());
+  setTimeout(fitDisplay, 1500);
+  let resizeTimer = null;
+  window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(fitDisplay, 250); });
+}
+
+/* ---------------- notifications (reminders before lessons) ---------------- */
+const PUSH_CFG = window.PUSH_CONFIG || {};
+function pushConfigured(){ return !!(PUSH_CFG.server && PUSH_CFG.vapidPublicKey); }
+function pushSupported(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function isStandalone(){ return window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches); }
+function getNotifyPrefs(){
+  const d = { remind:true, cancel:true, lead:5 };
+  try { return Object.assign(d, JSON.parse(localStorage.getItem('notifyPrefs') || '{}')); } catch(e){ return d; }
+}
+function setNotifyPrefs(p){ try { localStorage.setItem('notifyPrefs', JSON.stringify(p)); } catch(e){} }
+function pushUrl(path){ return PUSH_CFG.server.replace(/\/+$/, '') + path; }
+function urlB64ToU8(b64){
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+async function getPushSub(){
+  const reg = await navigator.serviceWorker.ready;
+  return reg.pushManager.getSubscription();
+}
+async function syncToServer(){
+  if (!pushConfigured() || !pushSupported() || Notification.permission !== 'granted') return false;
+  const sub = await getPushSub();
+  if (!sub) return false;
+  const lessons = {}, notes = {};
+  DAYS.forEach(d => {
+    lessons[d.name] = [...getMyLessons(d.name)];
+    notes[d.name] = {};
+    lessons[d.name].forEach(k => { const n = getMyNote(d.name, k); if (n) notes[d.name][k] = n; });
+  });
+  const res = await fetch(pushUrl('/api/sync'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ sub: sub.toJSON(), prefs: getNotifyPrefs(), lessons, notes }) });
+  return res.ok;
+}
+let syncTimer = null;
+function scheduleSync(){
+  if (DISPLAY_MODE || !pushConfigured() || !pushSupported() || Notification.permission !== 'granted') return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => { syncToServer().catch(e => console.error('sync failed', e)); }, 800);
+}
+async function enableNotifications(setStatus){
+  if (IS_IOS && !isStandalone()) { setStatus('באייפון צריך קודם להוסיף את האתר למסך הבית ולפתוח אותו משם.', true); return; }
+  setStatus('מבקש אישור...');
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') { setStatus('לא אושרו התראות. אפשר לאשר בהגדרות הדפדפן/הטלפון.', true); return; }
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlB64ToU8(PUSH_CFG.vapidPublicKey) });
+  setStatus('שומר...');
+  const ok = await syncToServer();
+  setStatus(ok ? 'ההתראות פעילות ✓' : 'לא הצלחתי להתחבר לשרת ההתראות. נסה שוב בעוד רגע.', !ok);
+}
+async function disableNotifications(){
+  const sub = await getPushSub();
+  if (sub) {
+    try { await fetch(pushUrl('/api/unsubscribe'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) }); } catch(e){}
+    await sub.unsubscribe();
+  }
+}
+async function testNotification(){
+  const sub = await getPushSub();
+  if (!sub) return false;
+  await syncToServer();
+  const res = await fetch(pushUrl('/api/test'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) });
+  const j = await res.json().catch(() => ({}));
+  return !!j.ok;
+}
+async function renderNotifyPanel(statusMsg, isErr){
+  const box = document.getElementById('notifyBox');
+  let html = '<h3>🔔 התראות לפני שיעורים</h3>';
+  if (!pushConfigured()) {
+    box.innerHTML = html + '<p>ההתראות עדיין לא הופעלו באתר הזה (חסר חיבור לשרת ההתראות).</p><div class="nbtns"><button class="nb" data-act="close">סגור</button></div>';
+    return;
+  }
+  if (!pushSupported() || (IS_IOS && !isStandalone())) {
+    const msg = IS_IOS
+      ? 'באייפון התראות עובדות רק מהאפליקציה שמותקנת במסך הבית (iOS 16.4 ומעלה). בספארי: לחץ על כפתור השיתוף ◻︎↑ ← "הוסף למסך הבית", ואז פתח את האפליקציה משם וחזור לכאן.'
+      : 'הדפדפן הזה לא תומך בהתראות. נסה Chrome או Firefox.';
+    box.innerHTML = html + `<div class="nwarn">${msg}</div><div class="nbtns"><button class="nb" data-act="close">סגור</button></div>`;
+    return;
+  }
+  let sub = null;
+  try { sub = Notification.permission === 'granted' ? await getPushSub() : null; } catch(e){}
+  const on = !!sub;
+  const prefs = getNotifyPrefs();
+  html += '<p>תקבל התראה לפני השיעורים ש<b>סימנת בכוכב ★</b>, וגם אם אחד מהם מתבטל. עובד גם כשהאפליקציה סגורה. הצליל והרטט נקבעים לפי הגדרות הטלפון שלך.</p>';
+  if (Notification.permission === 'denied') html += '<div class="nwarn">ההתראות חסומות לאתר הזה. כדי להפעיל: הגדרות הדפדפן/הטלפון ← התראות ← אפשר.</div>';
+  if (on) {
+    html += `<label class="nrow"><input type="checkbox" id="nRemind" ${prefs.remind ? 'checked' : ''}> תזכורת לפני שיעור</label>
+      <div class="nrow">כמה דקות לפני <select id="nLead">${[3,5,10,15,20,30].map(n => `<option value="${n}" ${prefs.lead === n ? 'selected' : ''}>${n} דקות</option>`).join('')}</select></div>
+      <label class="nrow"><input type="checkbox" id="nCancel" ${prefs.cancel ? 'checked' : ''}> הודעה כשיעור מתבטל</label>
+      <div class="nbtns"><button class="nb primary" data-act="test">שלח התראת בדיקה</button><button class="nb" data-act="off">כבה התראות</button><button class="nb" data-act="close">סגור</button></div>`;
+  } else {
+    html += '<div class="nbtns"><button class="nb primary" data-act="on">הפעל התראות</button><button class="nb" data-act="close">סגור</button></div>';
+  }
+  html += `<div class="nstatus" id="nStatus" style="color:${isErr ? '#e5484d' : 'inherit'}">${statusMsg || ''}</div>`;
+  box.innerHTML = html;
+}
+(function initNotifyUI(){
+  if (DISPLAY_MODE) return;
+  const btn = document.getElementById('notifyBtn');
+  const overlay = document.getElementById('notifyOverlay');
+  const box = document.getElementById('notifyBox');
+  const setStatus = (m, err) => { const el = document.getElementById('nStatus'); if (el) { el.textContent = m || ''; el.style.color = err ? '#e5484d' : 'inherit'; } };
+  async function refreshBtn(){
+    try { const sub = (pushConfigured() && pushSupported() && Notification.permission === 'granted') ? await getPushSub() : null; btn.classList.toggle('on', !!sub); } catch(e){}
+  }
+  btn.addEventListener('click', async () => { overlay.classList.add('open'); await renderNotifyPanel(); });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
+  box.addEventListener('click', async (e) => {
+    const act = e.target && e.target.dataset && e.target.dataset.act;
+    if (!act) return;
+    try {
+      if (act === 'close') overlay.classList.remove('open');
+      else if (act === 'on') { await enableNotifications(setStatus); await refreshBtn(); setTimeout(() => renderNotifyPanel(), 900); }
+      else if (act === 'off') { await disableNotifications(); await refreshBtn(); await renderNotifyPanel('ההתראות כבויות.'); }
+      else if (act === 'test') { setStatus('שולח...'); const ok = await testNotification(); setStatus(ok ? 'נשלחה! אמורה להגיע תוך שניות.' : 'לא הצלחתי לשלוח בדיקה. נסה שוב בעוד רגע.', !ok); }
+    } catch (err) { console.error(err); setStatus('משהו השתבש: ' + (err && err.message ? err.message : err), true); }
+  });
+  box.addEventListener('change', () => {
+    const r = document.getElementById('nRemind'), l = document.getElementById('nLead'), c = document.getElementById('nCancel');
+    if (!r || !l || !c) return;
+    setNotifyPrefs({ remind: r.checked, lead: parseInt(l.value, 10) || 5, cancel: c.checked });
+    syncToServer().then(ok => setStatus(ok ? 'נשמר ✓' : 'לא הצלחתי לשמור', !ok)).catch(() => setStatus('לא הצלחתי לשמור', true));
+  });
+  refreshBtn();
+  scheduleSync(); // keep the server copy fresh each time the app opens
+})();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed', err));
+  });
+}
+</script>
+
+</body>
+</html>
