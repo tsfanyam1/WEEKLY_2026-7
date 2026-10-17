@@ -447,6 +447,8 @@
   }
   #notifyBtn.on{ background:var(--text); color:var(--bg); border-color:var(--text); }
   .bell-btn{ appearance:none; background:none; border:1px solid var(--line-strong); border-radius:999px; width:38px; height:38px; font-size:17px; cursor:pointer; flex:none; align-self:center; margin-inline-start:6px; opacity:0.55; }
+  .bell-btn.small{ width:auto; height:auto; border:none; background:none; font-size:13px; padding:2px 3px; margin:0; vertical-align:middle; align-self:auto; }
+  .bell-btn.small.on{ background:none; }
   .bell-btn.on{ opacity:1; background:var(--surface); border-color:var(--text); }
   #notifyOverlay{
     position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.55);
@@ -706,7 +708,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v26</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v27</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -1132,7 +1134,7 @@ function renderNormalRows(seg, isToday, nowMinutes, dayName, myLessons, segKey){
         if (sub.cancelled) return '';
         const key = `${segKey}|${c.name}|${e.time}|${si}`;
         const mine = myLessons.has(key);
-        return `<div class="sub-lesson${mine?' mine-lesson':''}"><button class="star-btn lesson-star"${mine?' on':''}" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">${mine?'★':'☆'}</button>${formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike)}</div>`;
+        return `<div class="sub-lesson${mine?' mine-lesson':''}"><button class="star-btn lesson-star${mine?' on':''}" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">${mine?'★':'☆'}</button>${(mine && isPickMode()) ? bellHtml(dayName, key) : ''}${formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike)}</div>`;
       }).join('');
       return `<td>${subsHtml}</td>`;
     }).join('');
@@ -1170,7 +1172,7 @@ function renderFlatRows(seg, isToday, nowMinutes, tidyInfo, dayName, myLessons, 
         const mine = myLessons.has(key);
         const note = isNoteRoom ? getMyNote(dayName, key) : '';
         const noteHtml = (isNoteRoom && mine) ? `<button class="star-btn note-btn" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">✎${note?` ${escHtml(note)}`:' הוסף שעה'}</button>` : '';
-        return `<div class="sub-lesson${mine?' mine-lesson':''}"><button class="star-btn lesson-star${mine?' on':''}" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">${mine?'★':'☆'}</button><div class="lesson-inner">${formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike)}</div>${noteHtml}</div>`;
+        return `<div class="sub-lesson${mine?' mine-lesson':''}"><button class="star-btn lesson-star${mine?' on':''}" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">${mine?'★':'☆'}</button>${(mine && isPickMode()) ? bellHtml(dayName, key) : ''}<div class="lesson-inner">${formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike)}</div>${noteHtml}</div>`;
       }).join('');
       tds += `<td class="lesson-cell" rowspan="${c.span}"><div class="lesson-box">${subsHtml}</div></td>`;
     });
@@ -1330,7 +1332,7 @@ function renderBlocks(blocks, isToday, nowMinutes, dayName){
 
 function renderPersonalAgenda(blocks, dayName){
   const myLessons = getMyLessons(dayName);
-  const pickMode = !DISPLAY_MODE && pushConfigured() && getNotifyPrefs().mode === 'pick' && ('Notification' in window) && Notification.permission === 'granted';
+  const pickMode = isPickMode();
   const notifyPicks = getNotifyPicks(dayName);
   const sections = blocks.map(block => {
     const items = [];
@@ -1558,6 +1560,11 @@ document.getElementById('main').addEventListener('click', (ev) => {
     lessonBtn.textContent = mine ? '★' : '☆';
     const subEl = lessonBtn.closest('.sub-lesson');
     if (subEl) subEl.classList.toggle('mine-lesson', mine);
+    if (isPickMode()) {
+      const oldBell = lessonBtn.parentNode.querySelector('.bell-btn');
+      if (oldBell) oldBell.remove();
+      if (mine) lessonBtn.insertAdjacentHTML('afterend', bellHtml(day, key));
+    }
     if (subEl) {
       const parts = key.split('|');
       const room = parts[2];
@@ -1730,6 +1737,11 @@ function toggleNotifyPick(dayName, key){
   if (set.has(key)) set.delete(key); else set.add(key);
   try { localStorage.setItem('myNotify_' + dayName, JSON.stringify([...set])); } catch(e){}
   scheduleSync();
+}
+function isPickMode(){ return !DISPLAY_MODE && pushConfigured() && getNotifyPrefs().mode === 'pick'; }
+function bellHtml(dayName, key){
+  const on = getNotifyPicks(dayName).has(key);
+  return `<button class="bell-btn small${on ? ' on' : ''}" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}" title="התראה לשיעור הזה">${on ? '🔔' : '🔕'}</button>`;
 }
 function getNotifyPrefs(){
   const d = { remind:true, cancel:true, lead:5, mode:'all' };
