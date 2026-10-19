@@ -507,6 +507,17 @@
     text-overflow:ellipsis;
   }
 
+  .change-box{ margin:0 0 14px; padding:12px 14px; border-radius:12px; border:1px solid rgba(242,193,78,0.55); background:rgba(242,193,78,0.10); }
+  .change-title{ font-weight:800; font-size:15px; color:#f2c14e; margin-bottom:6px; }
+  .change-item{ display:flex; flex-direction:column; gap:2px; padding:6px 0; border-top:1px solid rgba(242,193,78,0.25); }
+  .change-item:first-of-type{ border-top:none; }
+  .change-text{ font-weight:600; font-size:14px; }
+  .change-detail{ font-size:13px; color:var(--muted); }
+  body.display-mode .change-box{ background:#fff7e0; border-color:#d9a21b; padding:10px 18px; margin:6px 0 12px; }
+  body.display-mode .change-title{ color:#8a5d00; font-size:clamp(14px,2.2vh,28px); }
+  body.display-mode .change-text{ color:#241a1a; font-size:clamp(13px,2vh,26px); }
+  body.display-mode .change-detail{ color:#6b5757; font-size:clamp(12px,1.8vh,22px); }
+  .agenda-end{ display:block; font-size:11px; font-weight:500; color:var(--muted2); margin-top:1px; }
   .cancel-box{ margin:0 0 14px; padding:12px 14px; border-radius:12px; border:1px solid rgba(229,72,77,0.55); background:rgba(229,72,77,0.12); }
   .cancel-title{ font-weight:800; font-size:15px; color:#ff6b6f; margin-bottom:6px; }
   .cancel-item{ display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; padding:4px 0; font-size:14px; border-top:1px solid rgba(229,72,77,0.25); }
@@ -708,7 +719,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v27</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v29</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -797,9 +808,17 @@ const cache = {}; // gid -> parsed blocks
 /* ---------------- helpers ---------------- */
 function clean(v){ return (v==null ? "" : String(v)).replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g,"").replace(/\u00a0/g," ").replace(/\s+/g," ").trim(); }
 function isTime(v){ return /^\d{1,2}:\d{2}$/.test(v); }
-function sheetsApiUrl(dayName){
+function sheetsApiUrl(dayName, ranged){
   const fields = encodeURIComponent("sheets(data.rowData.values(formattedValue,textFormatRuns,effectiveFormat.textFormat(bold,strikethrough)),merges)");
-  return `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?ranges=${encodeURIComponent(dayName)}&includeGridData=true&fields=${fields}&key=${API_KEY}`;
+  const range = ranged ? `'${dayName}'!A1:Z80` : dayName; // only the area that holds content (the sheet has ~1000 empty rows)
+  return `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?ranges=${encodeURIComponent(range)}&includeGridData=true&fields=${fields}&key=${API_KEY}`;
+}
+async function fetchSheetJsonClient(dayName){
+  let res = await fetch(sheetsApiUrl(dayName, true), { cache: 'no-store' });
+  if (!res.ok) res = await fetch(sheetsApiUrl(dayName, false), { cache: 'no-store' }); // fallback: whole sheet
+  const json = await res.json();
+  if (!res.ok) throw new Error((json.error && json.error.message) || ('bad status ' + res.status));
+  return json;
 }
 function escHtml(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
 function splitLessonSegments(rawText, runs, baseBold, baseStrike){
@@ -908,8 +927,72 @@ function collectCancellations(blocks){
   out.sort((a, b) => (timeToMinutes(a.time) || 0) - (timeToMinutes(b.time) || 0));
   return out;
 }
+/* ---------- moved lessons: struck in its old slot + the same text appears (not struck) in another slot ---------- */
+function normText(t){ return clean(t).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim(); }
+function collectAllLessons(){
+  const all = [];
+  DAYS.forEach(d => {
+    const blocks = cache[d.gid];
+    if (!blocks) return;
+    blocks.forEach(block => block.segments.forEach(seg => {
+      const segKey = `${block.type}|${seg.groupName || ''}`;
+      seg.entries.forEach(e => {
+        if (e.note) return;
+        e.cells.forEach(c => {
+          if (c.skip || c.empty || !c.text) return;
+          getSubs(c).forEach((sub, si) => {
+            all.push({
+              day: d.name, key: `${segKey}|${c.name}|${e.time}|${si}`, time: e.time, rawRoom: c.name,
+              room: (block.type === "מגמות" && seg.groupName) ? `${seg.groupName} · ${c.name}` : c.name,
+              text: clean(sub.rawText), norm: normText(sub.rawText), cancelled: !!sub.cancelled
+            });
+          });
+        });
+      });
+    }));
+  });
+  return all;
+}
+function computeChanges(){
+  const all = collectAllLessons();
+  const byText = new Map();
+  all.forEach(l => {
+    if (!l.norm || l.norm.length < 4 || isTimeNoteRoom(l.rawRoom)) return; // very short texts are too ambiguous to match (names in the math/English/podcast rooms are excluded too)
+    if (!byText.has(l.norm)) byText.set(l.norm, []);
+    byText.get(l.norm).push(l);
+  });
+  const changes = [], moved = new Set();
+  byText.forEach(list => {
+    const active = list.filter(l => !l.cancelled);
+    if (!active.length) return;
+    list.filter(l => l.cancelled).forEach(c => {
+      const targets = active.filter(a => !(a.day === c.day && a.time === c.time && a.rawRoom === c.rawRoom));
+      if (!targets.length || targets.length > 2) return; // nothing to match, or too ambiguous
+      changes.push({ from: c, to: targets });
+      moved.add(c.day + '|' + c.key);
+    });
+  });
+  return { changes, moved };
+}
+function describeMove(ch){
+  return ch.to.map(t => (t.day === ch.from.day)
+    ? `הוזז מ-${ch.from.time} ל-${t.time}`
+    : `עבר מיום ${ch.from.day} (${ch.from.time}) ליום ${t.day} (${t.time})`
+  ).join(' · ');
+}
+function renderChanges(dayName, onlyMine, changes){
+  let list = changes.filter(ch => ch.from.day === dayName || ch.to.some(t => t.day === dayName));
+  if (onlyMine) list = list.filter(ch => getMyLessons(ch.from.day).has(ch.from.key));
+  if (!list.length) return '';
+  const title = onlyMine ? 'שינויים בשיעורים שלך' : `שינויים · יום ${dayName}`;
+  return `<section class="change-box"><div class="change-title">🔄 ${title}</div>${list.map(ch => `<div class="change-item"><span class="change-text">${escHtml(ch.from.text)}</span><span class="change-detail">${escHtml(describeMove(ch))}${ch.to.length === 1 && ch.to[0].room ? ' · ' + escHtml(ch.to[0].room) : ''}</span></div>`).join('')}</section>`;
+}
 function renderCancellations(blocks, dayName, onlyMine){
-  let list = collectCancellations(blocks);
+  const { changes, moved } = computeChanges();
+  return renderCancellationsBox(blocks, dayName, onlyMine, moved) + renderChanges(dayName, onlyMine, changes);
+}
+function renderCancellationsBox(blocks, dayName, onlyMine, moved){
+  let list = collectCancellations(blocks).filter(x => !(moved && moved.has(dayName + '|' + x.key)));
   if (onlyMine) { const mine = getMyLessons(dayName); list = list.filter(x => mine.has(x.key)); }
   if (!list.length) return '';
   const title = onlyMine ? 'ביטולים בשיעורים שלך' : `ביטולים · יום ${dayName}`;
@@ -1338,10 +1421,12 @@ function renderPersonalAgenda(blocks, dayName){
     const items = [];
     block.segments.forEach(seg => {
       const segKey = `${block.type}|${seg.groupName || ''}`;
-      seg.entries.forEach(e => {
+      seg.entries.forEach((e, ei) => {
         if (e.note) return;
         e.cells.forEach(c => {
           if (c.skip || c.empty || !c.text) return;
+          const endEntry = seg.entries[ei + (c.span || 1)];
+          const endTime = (endEntry && isTime(endEntry.time)) ? endEntry.time : '';
           const subs = getSubs(c);
           subs.forEach((sub, si) => {
             if (sub.cancelled) return;
@@ -1351,6 +1436,7 @@ function renderPersonalAgenda(blocks, dayName){
               const roomLabel = (block.type === "מגמות" && seg.groupName) ? `${seg.groupName} · ${c.name}` : c.name;
               items.push({
                 time: e.time,
+                end: isNoteRoom ? '' : endTime,
                 room: roomLabel,
                 html: formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike),
                 cls: trackClass(seg, block.type),
@@ -1377,7 +1463,7 @@ function renderPersonalAgenda(blocks, dayName){
     const body = items.length
       ? `<div class="agenda">${items.map(it => `
         <div class="agenda-item ${it.cls}">
-          <div class="agenda-time mono">${it.note || it.time}</div>
+          <div class="agenda-time mono">${it.note || it.time}${(!it.note && it.end) ? `<span class="agenda-end">עד ${it.end}</span>` : ''}</div>
           <div class="agenda-body">
             <div class="agenda-room">${escHtml(it.room)}</div>
             <div class="agenda-text">${it.html}</div>
@@ -1397,6 +1483,33 @@ function renderPersonalAgenda(blocks, dayName){
 }
 
 /* ---------------- fetch + orchestration ---------------- */
+async function fetchDayData(dayIdx){
+  const day = DAYS[dayIdx];
+  const isTodayTab = JS_DAY_TO_NAME[new Date().getDay()] === day.name;
+  const fetchName = (isTodayTab && todayOverrideSheet) ? todayOverrideSheet : day.name;
+  const json = await fetchSheetJsonClient(fetchName);
+  const sheet = (json.sheets || [])[0];
+  const rowData = (sheet && sheet.data && sheet.data[0] && sheet.data[0].rowData) || [];
+  const rows = rowData.map(rd => (rd.values || []).map(v => (v && v.formattedValue) || ""));
+  const rawGrid = rowData.map(rd => (rd.values || []).map(v => ({ text: (v && v.formattedValue) || "", runs: (v && v.textFormatRuns) || null, baseBold: !!(v && v.effectiveFormat && v.effectiveFormat.textFormat && v.effectiveFormat.textFormat.bold), baseStrike: !!(v && v.effectiveFormat && v.effectiveFormat.textFormat && v.effectiveFormat.textFormat.strikethrough) })));
+  const merges = (sheet && sheet.merges) || [];
+  cache['__raw_' + day.gid] = rows;
+  cache['__merges_' + day.gid] = merges;
+  cache['__rawgrid_' + day.gid] = rawGrid;
+  cache[day.gid] = parseDay(rows, day.name, merges, rawGrid);
+}
+let otherDaysLoading = false;
+async function loadOtherDays(currentIdx){
+  if (otherDaysLoading) return;
+  otherDaysLoading = true;
+  let loadedAny = false;
+  for (let i = 0; i < DAYS.length; i++) {
+    if (i === currentIdx || cache[DAYS[i].gid]) continue;
+    try { await fetchDayData(i); loadedAny = true; } catch (e) { console.error('background day load failed', DAYS[i].name, e); }
+  }
+  otherDaysLoading = false;
+  if (loadedAny) { try { rerenderCurrent(); } catch (e) {} }
+}
 async function loadDay(dayIdx, { force=false, silent=false } = {}){
   const day = DAYS[dayIdx];
   const now0 = new Date();
@@ -1408,18 +1521,7 @@ async function loadDay(dayIdx, { force=false, silent=false } = {}){
   if (!cache[day.gid] || force) {
     if (!silent) main.innerHTML = stateBox;
     try {
-      const res = await fetch(sheetsApiUrl(fetchName), { cache: 'no-store' });
-      const json = await res.json();
-      if (!res.ok) throw new Error((json.error && json.error.message) || ('bad status ' + res.status));
-      const sheet = (json.sheets || [])[0];
-      const rowData = (sheet && sheet.data && sheet.data[0] && sheet.data[0].rowData) || [];
-      const rows = rowData.map(rd => (rd.values || []).map(v => (v && v.formattedValue) || ""));
-      const rawGrid = rowData.map(rd => (rd.values || []).map(v => ({ text: (v && v.formattedValue) || "", runs: (v && v.textFormatRuns) || null, baseBold: !!(v && v.effectiveFormat && v.effectiveFormat.textFormat && v.effectiveFormat.textFormat.bold), baseStrike: !!(v && v.effectiveFormat && v.effectiveFormat.textFormat && v.effectiveFormat.textFormat.strikethrough) })));
-      const merges = (sheet && sheet.merges) || [];
-      cache['__raw_' + day.gid] = rows;
-      cache['__merges_' + day.gid] = merges;
-      cache['__rawgrid_' + day.gid] = rawGrid;
-      cache[day.gid] = parseDay(rows, day.name, merges, rawGrid);
+      await fetchDayData(dayIdx);
     } catch (err) {
       console.error(err);
       if (silent) return; // keep showing the last good data on the big screen
@@ -1451,6 +1553,7 @@ async function loadDay(dayIdx, { force=false, silent=false } = {}){
   const personalView = isPersonalMode() && !DISPLAY_MODE;
   main.innerHTML = renderCancellations(blocks, day.name, personalView) + (personalView ? renderPersonalAgenda(blocks, day.name) : renderBlocks(blocks, isToday, nowMinutes, day.name));
   if (DISPLAY_MODE) fitDisplay();
+  setTimeout(() => loadOtherDays(dayIdx), 400);
 }
 
 function buildTabs(){
@@ -1783,7 +1886,7 @@ async function enableNotifications(setStatus){
   if (IS_IOS && !isStandalone()) { setStatus('באייפון צריך קודם להוסיף את האתר למסך הבית ולפתוח אותו משם.', true); return; }
   setStatus('מבקש אישור...');
   const perm = await Notification.requestPermission();
-  if (perm !== 'granted') { setStatus('לא אושרו התראות. אפשר לאשר בהגדרות הדפדפן/הטלפון.', true); return; }
+  if (perm !== 'granted') { setStatus('לא אושרו התראות. פתח את "לא מקבל בקשת אישור?" למטה כדי לראות איך מאשרים.', true); await renderNotifyPanel('לא אושרו התראות. אפשר לאשר לפי ההסבר שלמטה.', true); return; }
   const reg = await navigator.serviceWorker.ready;
   let sub = await reg.pushManager.getSubscription();
   if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlB64ToU8(PUSH_CFG.vapidPublicKey) });
@@ -1825,6 +1928,8 @@ async function renderNotifyPanel(statusMsg, isErr){
   const on = !!sub;
   const prefs = getNotifyPrefs();
   html += '<p>תקבל התראה לפני השיעורים ש<b>סימנת בכוכב ★</b>, וגם אם אחד מהם מתבטל. עובד גם כשהאפליקציה סגורה. הצליל והרטט נקבעים לפי הגדרות הטלפון שלך.</p>';
+  const inApp = /FBAN|FBAV|Instagram|WhatsApp|Line\/|; wv\)|MicroMessenger|Telegram/i.test(navigator.userAgent);
+  if (inApp) html += '<div class="nwarn">נראה שפתחת את האתר מתוך אפליקציה אחרת (וואטסאפ, אינסטגרם...). התראות לא עובדות שם. פתח את הקישור בדפדפן Chrome (⋮ ← "פתח בדפדפן").</div>';
   if (Notification.permission === 'denied') html += '<div class="nwarn">ההתראות חסומות לאתר הזה. כדי להפעיל: הגדרות הדפדפן/הטלפון ← התראות ← אפשר.</div>';
   if (on) {
     html += `<div class="nrow" style="flex-direction:column;align-items:flex-start;gap:6px"><b>על אילו שיעורים?</b>
@@ -1837,6 +1942,12 @@ async function renderNotifyPanel(statusMsg, isErr){
   } else {
     html += '<div class="nbtns"><button class="nb primary" data-act="on">הפעל התראות</button><button class="nb" data-act="close">סגור</button></div>';
   }
+  if (!IS_IOS) html += `<details class="nhelp" style="margin-top:12px;font-size:13px;line-height:1.55"><summary style="cursor:pointer;font-weight:700">לא מקבל בקשת אישור? (אנדרואיד)</summary>
+      <div style="margin-top:6px">האישור הוא לאתר עצמו, וגם לדפדפן. צריך את שניהם:<br>
+      <b>1. אישור לאתר:</b> ב-Chrome לחץ ⋮ ← <b>הגדרות</b> ← <b>הגדרות אתר</b> ← <b>התראות</b>, מצא את <span dir="ltr">tsfanyam1.github.io</span> ואפשר. (או: לחיצה על סמל המנעול ליד הכתובת ← הרשאות ← התראות ← אפשר.)<br>
+      <b>2. אישור לדפדפן:</b> הגדרות הטלפון ← <b>אפליקציות</b> ← <b>Chrome</b> ← <b>התראות</b> ← מופעל.<br>
+      <b>3. אופציונלי, מומלץ:</b> ב-Chrome ⋮ ← <b>התקנת אפליקציה</b> (או "הוסף למסך הבית"). כך האתר נפתח כמו אפליקציה, וההתראות מגיעות ממנה.<br>
+      אחרי זה חזור לכאן ולחץ "הפעל התראות" שוב.</div></details>`;
   html += `<div class="nstatus" id="nStatus" style="color:${isErr ? '#e5484d' : 'inherit'}">${statusMsg || ''}</div>`;
   box.innerHTML = html;
 }
