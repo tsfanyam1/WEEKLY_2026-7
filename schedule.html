@@ -517,6 +517,12 @@
   body.display-mode .change-title{ color:#8a5d00; font-size:clamp(14px,2.2vh,28px); }
   body.display-mode .change-text{ color:#241a1a; font-size:clamp(13px,2vh,26px); }
   body.display-mode .change-detail{ color:#6b5757; font-size:clamp(12px,1.8vh,22px); }
+  body.display-mode .notice-row{ display:flex; gap:14px; align-items:stretch; margin:6px 0 12px; }
+  body.display-mode .notice-row > section{ flex:1 1 0; min-width:0; margin:0; }
+  body.display-mode .cancel-title, body.display-mode .change-title{ font-size:clamp(16px,2.5vh,32px); }
+  body.display-mode .cancel-item{ font-size:clamp(15px,2.3vh,30px); }
+  body.display-mode .change-text{ font-size:clamp(15px,2.3vh,30px); }
+  body.display-mode .cancel-room, body.display-mode .change-detail{ font-size:clamp(13px,2vh,26px); }
   .agenda-end{ display:block; font-size:11px; font-weight:500; color:var(--muted2); margin-top:1px; }
   .cancel-box{ margin:0 0 14px; padding:12px 14px; border-radius:12px; border:1px solid rgba(229,72,77,0.55); background:rgba(229,72,77,0.12); }
   .cancel-title{ font-weight:800; font-size:15px; color:#ff6b6f; margin-bottom:6px; }
@@ -719,7 +725,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v29</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v30</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -989,7 +995,8 @@ function renderChanges(dayName, onlyMine, changes){
 }
 function renderCancellations(blocks, dayName, onlyMine){
   const { changes, moved } = computeChanges();
-  return renderCancellationsBox(blocks, dayName, onlyMine, moved) + renderChanges(dayName, onlyMine, changes);
+  const html = renderCancellationsBox(blocks, dayName, onlyMine, moved) + renderChanges(dayName, onlyMine, changes);
+  return html ? `<div class="notice-row">${html}</div>` : '';
 }
 function renderCancellationsBox(blocks, dayName, onlyMine, moved){
   let list = collectCancellations(blocks).filter(x => !(moved && moved.has(dayName + '|' + x.key)));
