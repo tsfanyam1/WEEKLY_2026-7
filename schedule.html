@@ -605,7 +605,8 @@
     background-size:480px 480px;
     overflow:hidden; height:100vh; padding-bottom:0;
   }
-  body.display-mode nav.days,
+  body.display-mode nav.days{ padding:0 16px 6px; gap:6px; }
+  body.display-mode nav.days button{ font-size:clamp(12px,1.8vh,20px); padding:4px 16px; }
   body.display-mode #myToggleWrap,
   body.display-mode footer.credit,
   body.display-mode .my-hint{ display:none !important; }
@@ -725,7 +726,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v31</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v32</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -739,6 +740,9 @@
 <script>
 /* ---------------- CONFIG ---------------- */
 const DISPLAY_MODE = new URLSearchParams(location.search).get('display') === '1';
+let displayManual = { idx: -1, until: 0 };   // manual day choice on the big screen (returns to today after 5 min)
+let displayShown = -1;
+function displayIdx(){ return (displayManual.idx >= 0 && Date.now() < displayManual.until) ? displayManual.idx : pickInitialDay(); }
 if (DISPLAY_MODE) document.body.classList.add('display-mode');
 const SPREADSHEET_ID = "1LRUToXyJVqRTDfXS7dm9OQ26IVbie8o3lIYmpFwOHTU";
 const API_KEY = "AIzaSyAyu_5CQaNJQOzWpIAmbqsF4NXT_59oYTY";
@@ -1264,6 +1268,7 @@ function renderFlatRows(seg, isToday, nowMinutes, tidyInfo, dayName, myLessons, 
         const noteHtml = (isNoteRoom && mine) ? `<button class="star-btn note-btn" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">✎${note?` ${escHtml(note)}`:' הוסף שעה'}</button>` : '';
         return `<div class="sub-lesson${mine?' mine-lesson':''}"><button class="star-btn lesson-star${mine?' on':''}" data-day="${escHtml(dayName)}" data-key="${escHtml(key)}">${mine?'★':'☆'}</button>${(mine && isPickMode()) ? bellHtml(dayName, key) : ''}<div class="lesson-inner">${formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike)}</div>${noteHtml}</div>`;
       }).join('');
+      if (!subsHtml) { tds += `<td class="empty" rowspan="${c.span}"></td>`; return; }
       tds += `<td class="lesson-cell" rowspan="${c.span}"><div class="lesson-box">${subsHtml}</div></td>`;
     });
     return `<tr class="${isNow?'now-row':''}">${tds}</tr>`;
@@ -1572,7 +1577,9 @@ function buildTabs(){
     btn.addEventListener('click', () => {
       nav.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
-      loadDay(parseInt(btn.dataset.idx,10));
+      const bi = parseInt(btn.dataset.idx,10);
+      if (DISPLAY_MODE) { displayManual = { idx: bi, until: Date.now() + 300000 }; displayShown = bi; tickClock(); }
+      loadDay(bi);
     });
   });
 }
@@ -1586,7 +1593,7 @@ function pickInitialDay(){
 
 function tickClock(){
   const now = new Date();
-  if (DISPLAY_MODE) document.querySelector('header.top h1').textContent = 'מערכת שבועית · יום ' + DAYS[pickInitialDay()].name;
+  if (DISPLAY_MODE) document.querySelector('header.top h1').textContent = 'מערכת שבועית · יום ' + DAYS[displayIdx()].name;
   document.getElementById('todayLabel').textContent = JS_DAY_TO_NAME[now.getDay()];
   document.getElementById('clockTime').textContent =
     String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
@@ -1763,7 +1770,8 @@ function fitDisplay(){
   const main = document.getElementById('main');
   const header = document.querySelector('header.top');
   const banner = document.getElementById('exceptionBanner');
-  const topH = (banner && banner.style.display !== 'none' ? banner.offsetHeight : 0) + header.offsetHeight;
+  const navEl = document.getElementById('dayTabs');
+  const topH = (banner && banner.style.display !== 'none' ? banner.offsetHeight : 0) + header.offsetHeight + (navEl ? navEl.offsetHeight : 0);
   const vw = window.innerWidth, vh = window.innerHeight;
   const availH = Math.max(100, vh - topH - 18);
   main.style.transform = 'none';
@@ -1815,18 +1823,18 @@ checkExceptions().then((changed) => {
 });
 
 if (DISPLAY_MODE) {
-  let shownIdx = pickInitialDay();
+  displayShown = pickInitialDay();
   // every minute: move the "now" marker, and switch day after midnight
   setInterval(() => {
-    const idx = pickInitialDay();
+    const idx = displayIdx();
     document.querySelectorAll('nav.days button').forEach(b => b.classList.remove('active'));
     const btn = document.querySelector(`nav.days button[data-idx="${idx}"]`);
     if (btn) btn.classList.add('active');
-    if (idx !== shownIdx) { shownIdx = idx; loadDay(idx, { force:true, silent:true }); }
+    if (idx !== displayShown) { displayShown = idx; loadDay(idx, { force:true, silent:true }); }
     else rerenderCurrent();
   }, 60000);
   // every 30 seconds: quietly re-read the sheet (no spinner, no flicker)
-  setInterval(() => loadDay(shownIdx, { force:true, silent:true }), 30000);
+  setInterval(() => loadDay(displayShown, { force:true, silent:true }), 30000);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitDisplay());
   setTimeout(fitDisplay, 1500);
   let resizeTimer = null;
