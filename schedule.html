@@ -725,7 +725,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v30</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v31</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -1825,12 +1825,29 @@ if (DISPLAY_MODE) {
     if (idx !== shownIdx) { shownIdx = idx; loadDay(idx, { force:true, silent:true }); }
     else rerenderCurrent();
   }, 60000);
-  // every 3 minutes: quietly re-read the sheet (no spinner, no flicker)
-  setInterval(() => loadDay(shownIdx, { force:true, silent:true }), 180000);
+  // every 30 seconds: quietly re-read the sheet (no spinner, no flicker)
+  setInterval(() => loadDay(shownIdx, { force:true, silent:true }), 30000);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitDisplay());
   setTimeout(fitDisplay, 1500);
   let resizeTimer = null;
   window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(fitDisplay, 250); });
+}
+
+if (!DISPLAY_MODE) {
+  // phone/app: quietly refresh from the sheet every 45 sec, and when returning to the app
+  let lastAuto = Date.now();
+  function autoRefresh(){
+    if (document.hidden) return;
+    lastAuto = Date.now();
+    const b = document.querySelector('nav.days button.active');
+    const idx = b ? parseInt(b.dataset.idx, 10) : pickInitialDay();
+    if (isNaN(idx)) return;
+    const y = window.scrollY;
+    loadDay(idx, { force:true, silent:true }).then(() => { try { window.scrollTo(0, y); } catch(e){} });
+  }
+  setInterval(autoRefresh, 45000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - lastAuto > 20000) autoRefresh(); });
+  window.addEventListener('focus', () => { if (Date.now() - lastAuto > 20000) autoRefresh(); });
 }
 
 /* ---------------- notifications (reminders before lessons) ---------------- */
