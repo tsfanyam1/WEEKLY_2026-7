@@ -726,7 +726,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v32</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v33</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -997,9 +997,17 @@ function renderChanges(dayName, onlyMine, changes){
   const title = onlyMine ? 'שינויים בשיעורים שלך' : `שינויים · יום ${dayName}`;
   return `<section class="change-box"><div class="change-title">🔄 ${title}</div>${list.map(ch => `<div class="change-item"><span class="change-text">${escHtml(ch.from.text)}</span><span class="change-detail">${escHtml(describeMove(ch))}${ch.to.length === 1 && ch.to[0].room ? ' · ' + escHtml(ch.to[0].room) : ''}</span></div>`).join('')}</section>`;
 }
+// the cancellations box is hidden up to and including this date (YYYY-MM-DD, Israel time); empty = never hide
+const HIDE_CANCELLATIONS_UNTIL = '2026-11-07';
+function cancellationsHidden(){
+  if (!HIDE_CANCELLATIONS_UNTIL) return false;
+  const d = new Date();
+  const today = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  return today <= HIDE_CANCELLATIONS_UNTIL;
+}
 function renderCancellations(blocks, dayName, onlyMine){
   const { changes, moved } = computeChanges();
-  const html = renderCancellationsBox(blocks, dayName, onlyMine, moved) + renderChanges(dayName, onlyMine, changes);
+  const html = (cancellationsHidden() ? '' : renderCancellationsBox(blocks, dayName, onlyMine, moved)) + renderChanges(dayName, onlyMine, changes);
   return html ? `<div class="notice-row">${html}</div>` : '';
 }
 function renderCancellationsBox(blocks, dayName, onlyMine, moved){
