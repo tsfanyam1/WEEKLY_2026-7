@@ -733,7 +733,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v35</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v36</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -1034,25 +1034,38 @@ function lessonTeacherSets(blocks){
   return { active, cancelled };
 }
 function renderMentors(blocks, day){
-  const rows = (cache['__raw_' + day.gid] || []).slice(0, 9);
+  const rows = (cache['__raw_' + day.gid] || []).slice(0, 12);
   const { active, cancelled } = lessonTeacherSets(blocks);
   const lines = [];
   const seen = new Set();
-  rows.forEach((row, r) => {
-    const label = clean(row[1] || '');
-    const val = (row.slice(2).map(clean).find(x => x) || '');
-    if (!val) return;
-    let title = '';
-    if (/^חונכי מגמה/.test(label)) title = 'חונכי מגמה';
-    else if (/^חונכים/.test(label)) title = 'חונכים';
-    else if (/^סדנאים/.test(label)) title = 'סדנאים';
-    else if (!label && !clean(row[0] || '') && r >= 3 && r <= 7 && !/[0-9:]/.test(val) && !/^(מגמות|חדרים)/.test(val)) title = 'סדנאים';
-    if (!title) return;
+  const filt = val => {
     const names = [];
     mentorNameParts(val).forEach(n => {
       if (cancelled.has(n) && !active.has(n)) return;      // all of his lessons were cancelled
       if (names.indexOf(n) === -1) names.push(n);
     });
+    return names;
+  };
+  const TRACK = /^(עיצוב|מדיה|סאונד)/;
+  let afterTracks = 0;   // rows left in which a track line may follow "חונכי מגמה"
+  rows.forEach((row, r) => {
+    const cells = (row || []).slice(0, 8).map(clean).filter(Boolean);
+    if (!cells.length) return;
+    const first = cells[0];
+    let title = '', val = '';
+    if (/^חונכי מגמה/.test(first)) {
+      afterTracks = 3;
+      if (cells.length >= 3) { title = cells[1]; val = cells[2]; }
+      else if (cells.length === 2) { title = 'חונכי מגמה'; val = cells[1]; }   // old layout: a plain names line
+      else return;
+      if (!TRACK.test(title)) { title = 'חונכי מגמה'; val = cells.slice(1).join(', '); }
+    } else if (/^חונכים/.test(first) && cells.length >= 2) { title = 'חונכים'; val = cells[1]; }
+    else if (/^סדנאים/.test(first) && cells.length >= 2) { title = 'סדנאים'; val = cells[1]; }
+    else if (afterTracks > 0 && TRACK.test(first) && cells.length >= 2) { title = first; val = cells[1]; }
+    else if (!clean(row[0] || '') && !clean(row[1] || '') && r >= 3 && r <= 7 && cells.length === 1 && !/[0-9:]/.test(first) && !/^(מגמות|חדרים)/.test(first)) { title = 'סדנאים'; val = first; }
+    if (afterTracks > 0 && r > 0) afterTracks--;
+    if (!title) return;
+    const names = filt(val);
     if (names.length) lines.push({ title, names });
   });
   if (!lines.length) return '';
