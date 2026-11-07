@@ -525,6 +525,13 @@
   body.display-mode .cancel-room, body.display-mode .change-detail{ font-size:clamp(13px,2vh,26px); }
   .agenda-end{ display:block; font-size:11px; font-weight:500; color:var(--muted2); margin-top:1px; }
   .cancel-box{ margin:0 0 14px; padding:12px 14px; border-radius:12px; border:1px solid rgba(229,72,77,0.55); background:rgba(229,72,77,0.12); }
+  .mentors-box{ margin:0 0 14px; padding:10px 14px; border-radius:12px; border:1px solid var(--line-strong); background:var(--surface); }
+  .mentors-row{ display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; padding:3px 0; }
+  .mentors-label{ font-weight:800; font-size:14px; color:var(--muted); white-space:nowrap; }
+  .mentors-names{ font-size:15px; font-weight:600; color:var(--text); }
+  body.display-mode .mentors-box{ padding:8px 18px; margin:6px 0 12px; }
+  body.display-mode .mentors-label{ font-size:clamp(14px,2.1vh,26px); }
+  body.display-mode .mentors-names{ font-size:clamp(14px,2.2vh,28px); }
   .cancel-title{ font-weight:800; font-size:15px; color:#ff6b6f; margin-bottom:6px; }
   .cancel-item{ display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; padding:4px 0; font-size:14px; border-top:1px solid rgba(229,72,77,0.25); }
   .cancel-item:first-of-type{ border-top:none; }
@@ -726,7 +733,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v34</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v35</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -1004,6 +1011,52 @@ function cancellationsHidden(){
   const d = new Date();
   const today = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   return today <= HIDE_CANCELLATIONS_UNTIL;
+}
+/* ---------------- mentors of the day (from the header rows of the day sheet) ---------------- */
+function mentorNameParts(str){
+  return String(str||'').split(/[,،]/).map(x => x.replace(/["'׳״]/g,'').trim()).filter(Boolean);
+}
+function lessonTeacherSets(blocks){
+  const active = new Set(), cancelled = new Set();
+  blocks.forEach(block => block.segments.forEach(seg => seg.entries.forEach(e => {
+    if (e.note) return;
+    e.cells.forEach(c => {
+      if (c.skip || c.empty || !c.text) return;
+      getSubs(c).forEach(sub => {
+        const txt = clean(sub.rawText);
+        const re = /\(([^)]*)\)/g; let m;
+        while ((m = re.exec(txt))) {
+          m[1].split(/[,+\/،]/).map(x => x.replace(/["'׳״]/g,'').trim()).filter(Boolean).forEach(n => (sub.cancelled ? cancelled : active).add(n));
+        }
+      });
+    });
+  })));
+  return { active, cancelled };
+}
+function renderMentors(blocks, day){
+  const rows = (cache['__raw_' + day.gid] || []).slice(0, 9);
+  const { active, cancelled } = lessonTeacherSets(blocks);
+  const lines = [];
+  const seen = new Set();
+  rows.forEach((row, r) => {
+    const label = clean(row[1] || '');
+    const val = (row.slice(2).map(clean).find(x => x) || '');
+    if (!val) return;
+    let title = '';
+    if (/^חונכי מגמה/.test(label)) title = 'חונכי מגמה';
+    else if (/^חונכים/.test(label)) title = 'חונכים';
+    else if (/^סדנאים/.test(label)) title = 'סדנאים';
+    else if (!label && !clean(row[0] || '') && r >= 3 && r <= 7 && !/[0-9:]/.test(val) && !/^(מגמות|חדרים)/.test(val)) title = 'סדנאים';
+    if (!title) return;
+    const names = [];
+    mentorNameParts(val).forEach(n => {
+      if (cancelled.has(n) && !active.has(n)) return;      // all of his lessons were cancelled
+      if (names.indexOf(n) === -1) names.push(n);
+    });
+    if (names.length) lines.push({ title, names });
+  });
+  if (!lines.length) return '';
+  return `<section class="mentors-box">${lines.map(l => `<div class="mentors-row"><span class="mentors-label">${escHtml(l.title)}:</span><span class="mentors-names">${l.names.map(escHtml).join(', ')}</span></div>`).join('')}</section>`;
 }
 function renderCancellations(blocks, dayName, onlyMine){
   const { changes, moved } = computeChanges();
@@ -1571,7 +1624,7 @@ async function loadDay(dayIdx, { force=false, silent=false } = {}){
     return;
   }
   const personalView = isPersonalMode() && !DISPLAY_MODE;
-  main.innerHTML = renderCancellations(blocks, day.name, personalView) + (personalView ? renderPersonalAgenda(blocks, day.name) : renderBlocks(blocks, isToday, nowMinutes, day.name));
+  main.innerHTML = renderCancellations(blocks, day.name, personalView) + (personalView ? '' : renderMentors(blocks, day)) + (personalView ? renderPersonalAgenda(blocks, day.name) : renderBlocks(blocks, isToday, nowMinutes, day.name));
   if (DISPLAY_MODE) fitDisplay();
   setTimeout(() => loadOtherDays(dayIdx), 400);
 }
@@ -1665,7 +1718,7 @@ function rerenderCurrent(){
   const isToday = todayName === day.name;
   const nowMinutes = now.getHours()*60 + now.getMinutes();
   const personalView = isPersonalMode() && !DISPLAY_MODE;
-  document.getElementById('main').innerHTML = renderCancellations(blocks, day.name, personalView) + (personalView ? renderPersonalAgenda(blocks, day.name) : renderBlocks(blocks, isToday, nowMinutes, day.name));
+  document.getElementById('main').innerHTML = renderCancellations(blocks, day.name, personalView) + (personalView ? '' : renderMentors(blocks, day)) + (personalView ? renderPersonalAgenda(blocks, day.name) : renderBlocks(blocks, isToday, nowMinutes, day.name));
   if (DISPLAY_MODE) fitDisplay();
 }
 
