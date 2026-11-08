@@ -733,7 +733,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v36</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v37</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -826,7 +826,7 @@ const cache = {}; // gid -> parsed blocks
 function clean(v){ return (v==null ? "" : String(v)).replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g,"").replace(/\u00a0/g," ").replace(/\s+/g," ").trim(); }
 function isTime(v){ return /^\d{1,2}:\d{2}$/.test(v); }
 function sheetsApiUrl(dayName, ranged){
-  const fields = encodeURIComponent("sheets(data.rowData.values(formattedValue,textFormatRuns,effectiveFormat.textFormat(bold,strikethrough)),merges)");
+  const fields = encodeURIComponent("sheets(data.rowData.values(formattedValue,textFormatRuns,effectiveFormat(textFormat(bold,strikethrough),backgroundColor,backgroundColorStyle)),merges)");
   const range = ranged ? `'${dayName}'!A1:Z80` : dayName; // only the area that holds content (the sheet has ~1000 empty rows)
   return `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?ranges=${encodeURIComponent(range)}&includeGridData=true&fields=${fields}&key=${API_KEY}`;
 }
@@ -1210,7 +1210,7 @@ function parseDay(rows, dayName, merges, rawGrid){
             const rc = ((rawGrid && rawGrid[r]) || [])[rm.col] || {};
             if (covered.has(key)) return { skip: true, name: rm.name };
             const text = clean(rowVals[rm.col]);
-            if (!text) return { empty: true, name: rm.name };
+            if (!text) { const tl0 = topLeft.get(key); return { empty: true, name: rm.name, span: (rc.dormant && tl0) ? tl0.rowSpan : 1 }; }
             const tl = topLeft.get(key);
             const span = tl ? tl.rowSpan : 1;
             return { text, span, name: rm.name, rawText: rc.text || "", runs: rc.runs || null, baseBold: rc.baseBold, baseStrike: rc.baseStrike, subLessons: splitLessonSegments(rc.text, rc.runs, rc.baseBold, rc.baseStrike) };
@@ -1331,7 +1331,7 @@ function renderFlatRows(seg, isToday, nowMinutes, tidyInfo, dayName, myLessons, 
     let tds = timeTd;
     e.cells.forEach(c => {
       if (c.skip) return;
-      if (c.empty) { tds += `<td class="empty"></td>`; return; }
+      if (c.empty) { tds += `<td class="empty"${c.span > 1 ? ` rowspan="${c.span}"` : ''}></td>`; return; }
       const subs = getSubs(c);
       const isNoteRoom = isTimeNoteRoom(c.name);
       const subsHtml = subs.map((sub, si) => {
@@ -1569,6 +1569,23 @@ function renderPersonalAgenda(blocks, dayName){
 }
 
 /* ---------------- fetch + orchestration ---------------- */
+/* שיעור "רדום" = תא עם רקע שחור בגיליון: לא מופיע במערכת ולא בהודעות ביטול */
+function isDormantCell(v){
+  const ef = v && v.effectiveFormat;
+  if (!ef || !(v.formattedValue)) return false;
+  const bg = ef.backgroundColor || (ef.backgroundColorStyle && ef.backgroundColorStyle.rgbColor);
+  if (!bg) return false;
+  return (bg.red || 0) < 0.12 && (bg.green || 0) < 0.12 && (bg.blue || 0) < 0.12;
+}
+function buildRowsAndGrid(rowData){
+  let withText = 0, dormant = 0;
+  rowData.forEach(rd => (rd.values || []).forEach(v => { if (v && v.formattedValue) { withText++; if (isDormantCell(v)) dormant++; } }));
+  const useDormant = dormant > 0 && dormant <= withText * 0.5;   // safety: never hide most of the sheet
+  const isD = v => useDormant && isDormantCell(v);
+  const rows = rowData.map(rd => (rd.values || []).map(v => isD(v) ? "" : ((v && v.formattedValue) || "")));
+  const rawGrid = rowData.map(rd => (rd.values || []).map(v => isD(v) ? { text: "", runs: null, dormant: true } : ({ text: (v && v.formattedValue) || "", runs: (v && v.textFormatRuns) || null, baseBold: !!(v && v.effectiveFormat && v.effectiveFormat.textFormat && v.effectiveFormat.textFormat.bold), baseStrike: !!(v && v.effectiveFormat && v.effectiveFormat.textFormat && v.effectiveFormat.textFormat.strikethrough) })));
+  return { rows, rawGrid };
+}
 async function fetchDayData(dayIdx){
   const day = DAYS[dayIdx];
   const isTodayTab = JS_DAY_TO_NAME[new Date().getDay()] === day.name;
@@ -1576,8 +1593,7 @@ async function fetchDayData(dayIdx){
   const json = await fetchSheetJsonClient(fetchName);
   const sheet = (json.sheets || [])[0];
   const rowData = (sheet && sheet.data && sheet.data[0] && sheet.data[0].rowData) || [];
-  const rows = rowData.map(rd => (rd.values || []).map(v => (v && v.formattedValue) || ""));
-  const rawGrid = rowData.map(rd => (rd.values || []).map(v => ({ text: (v && v.formattedValue) || "", runs: (v && v.textFormatRuns) || null, baseBold: !!(v && v.effectiveFormat && v.effectiveFormat.textFormat && v.effectiveFormat.textFormat.bold), baseStrike: !!(v && v.effectiveFormat && v.effectiveFormat.textFormat && v.effectiveFormat.textFormat.strikethrough) })));
+  const { rows, rawGrid } = buildRowsAndGrid(rowData);
   const merges = (sheet && sheet.merges) || [];
   cache['__raw_' + day.gid] = rows;
   cache['__merges_' + day.gid] = merges;
