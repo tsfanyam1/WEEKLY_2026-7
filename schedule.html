@@ -532,6 +532,37 @@
   body.display-mode .mentors-box{ padding:8px 18px; margin:6px 0 12px; }
   body.display-mode .mentors-label{ font-size:clamp(14px,2.1vh,26px); }
   body.display-mode .mentors-names{ font-size:clamp(14px,2.2vh,28px); }
+  .soc-box{ margin:16px 0; padding:14px; border-radius:12px; border:1px solid var(--line-strong); background:var(--surface); }
+  .soc-title{ font-weight:800; font-size:16px; margin-bottom:6px; }
+  .soc-text{ font-size:14px; color:var(--muted); line-height:1.6; margin-bottom:10px; }
+  .soc-sub{ font-weight:700; font-size:14px; margin:14px 0 6px; }
+  .soc-btn{ appearance:none; font:inherit; font-size:15px; font-weight:700; color:var(--text); background:transparent; border:1px solid var(--line-strong); border-radius:999px; padding:10px 18px; cursor:pointer; min-height:44px; }
+  .soc-btn.primary{ background:var(--text); color:#111; border-color:var(--text); }
+  .soc-btn:disabled{ opacity:.5; }
+  .soc-form{ margin-top:12px; display:flex; flex-direction:column; gap:10px; }
+  .soc-form[hidden]{ display:none; }
+  .soc-label{ font-size:14px; color:var(--muted); }
+  .soc-chips{ display:flex; gap:8px; flex-wrap:wrap; }
+  .soc-chip{ appearance:none; font:inherit; font-size:14px; color:var(--text); background:transparent; border:1px solid var(--line-strong); border-radius:999px; padding:8px 14px; cursor:pointer; min-height:40px; }
+  .soc-input{ font:inherit; font-size:16px; color:var(--text); background:var(--bg, #111); border:1px solid var(--line-strong); border-radius:10px; padding:10px 12px; min-height:44px; width:100%; box-sizing:border-box; }
+  .soc-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .soc-row label{ flex:1 1 140px; font-size:13px; color:var(--muted); display:flex; flex-direction:column; gap:4px; }
+  .soc-msg{ color:#ff6b6f; font-size:14px; min-height:18px; }
+  .soc-x{ appearance:none; background:none; border:none; color:var(--muted); font-size:17px; cursor:pointer; padding:8px; align-self:center; }
+  .soc-friend{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:8px 0; border-top:1px solid var(--line); }
+  .soc-fhead{ flex:1; display:flex; align-items:center; gap:8px; font-size:15px; }
+  .soc-fhead input{ width:20px; height:20px; }
+  .soc-date{ font-size:12px; color:var(--muted); }
+  .soc-friend details{ flex-basis:100%; font-size:14px; color:var(--muted); }
+  .soc-line{ padding:3px 0; color:var(--text); }
+  .soc-free{ margin-top:12px; padding:10px 12px; border-radius:10px; background:rgba(76,175,125,0.12); border:1px solid rgba(76,175,125,0.5); }
+  .soc-live{ margin-top:10px; font-size:14px; color:var(--muted); }
+  .soc-link{ appearance:none; background:none; border:none; font:inherit; font-size:14px; color:var(--text); text-decoration:underline; cursor:pointer; padding:4px; }
+  .soc-win{ font-size:17px; font-weight:800; padding:3px 0; }
+  .soc-win span{ font-size:13px; font-weight:500; color:var(--muted); }
+  .soc-empty{ font-size:14px; color:var(--muted); padding:4px 0; }
+  .soc-note{ font-size:12px; color:var(--muted); margin-top:6px; }
+  .agenda-item.seg-custom{ border-inline-start-color:var(--muted); border-style:dashed; border-inline-start-style:solid; }
   .cancel-title{ font-weight:800; font-size:15px; color:#ff6b6f; margin-bottom:6px; }
   .cancel-item{ display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; padding:4px 0; font-size:14px; border-top:1px solid rgba(229,72,77,0.25); }
   .cancel-item:first-of-type{ border-top:none; }
@@ -733,7 +764,7 @@
 </main>
 
 <footer class="credit">
-  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v37</span>
+  מתעדכן ישירות מהגיליון המקורי · <button id="refreshBtn">רענון עכשיו</button> · <button id="debugBtn">הצג מבנה גולמי</button> · <a href="?display=1">מצב תצוגה למסך גדול</a> · <span style="opacity:0.5">v39</span>
   <div id="debugPanel" style="display:none;max-width:900px;margin:14px auto 0;text-align:right;direction:ltr">
     <div style="direction:rtl;text-align:center;margin-bottom:6px;font-size:11.5px">שורות גולמיות:</div>
     <textarea id="debugRows" readonly style="width:100%;height:220px;background:#0e1114;color:#ece7dc;border:1px solid var(--line-strong);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px" onclick="this.select()"></textarea>
@@ -812,7 +843,7 @@ function resetAllChoices(){
   const toRemove = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (k === 'myTrack' || k.startsWith('myLessons_') || k.startsWith('myNote_') || k.startsWith('myNotify_')) toRemove.push(k);
+    if (k === 'myTrack' || k.startsWith('myLessons_') || k.startsWith('myNote_') || k.startsWith('myNotify_') || k.startsWith('myCustom_')) toRemove.push(k);
   }
   toRemove.forEach(k => localStorage.removeItem(k));
   scheduleSync();
@@ -1499,74 +1530,341 @@ function renderBlocks(blocks, isToday, nowMinutes, dayName){
   }).join('');
 }
 
-function renderPersonalAgenda(blocks, dayName){
+/* ---------------- my schedule: custom items, sharing, shared breaks ---------------- */
+function getCustom(dayName){
+  try { const a = JSON.parse(localStorage.getItem('myCustom_' + dayName) || '[]'); return Array.isArray(a) ? a : []; }
+  catch(e){ return []; }
+}
+function setCustom(dayName, arr){
+  scheduleShareSync();
+  if (arr.length) localStorage.setItem('myCustom_' + dayName, JSON.stringify(arr)); else localStorage.removeItem('myCustom_' + dayName);
+}
+function noteMinutes(note){
+  const m = /(\d{1,2})[:.](\d{2})/.exec(note || '');
+  if (!m) return null;
+  const h = parseInt(m[1], 10), mi = parseInt(m[2], 10);
+  return (h < 24 && mi < 60) ? h * 60 + mi : null;
+}
+function fmtMin(n){ return String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0'); }
+
+// flat list of the student's lessons + own items for one day, sorted by time
+function getAgendaItems(blocks, dayName){
   const myLessons = getMyLessons(dayName);
-  const pickMode = isPickMode();
   const notifyPicks = getNotifyPicks(dayName);
-  const sections = blocks.map(block => {
-    const items = [];
-    block.segments.forEach(seg => {
-      const segKey = `${block.type}|${seg.groupName || ''}`;
-      seg.entries.forEach((e, ei) => {
-        if (e.note) return;
-        e.cells.forEach(c => {
-          if (c.skip || c.empty || !c.text) return;
-          const endEntry = seg.entries[ei + (c.span || 1)];
-          const endTime = (endEntry && isTime(endEntry.time)) ? endEntry.time : '';
-          const subs = getSubs(c);
-          subs.forEach((sub, si) => {
-            if (sub.cancelled) return;
-            const key = `${segKey}|${c.name}|${e.time}|${si}`;
-            if (myLessons.has(key)) {
-              const isNoteRoom = isTimeNoteRoom(c.name);
-              const roomLabel = (block.type === "מגמות" && seg.groupName) ? `${seg.groupName} · ${c.name}` : c.name;
-              items.push({
-                time: e.time,
-                end: isNoteRoom ? '' : endTime,
-                room: roomLabel,
-                html: formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike),
-                cls: trackClass(seg, block.type),
-                note: isNoteRoom ? getMyNote(dayName, key) : '',
-                key,
-                picked: notifyPicks.has(key)
-              });
-            }
+  const items = [];
+  (blocks || []).forEach(block => block.segments.forEach(seg => {
+    const segKey = `${block.type}|${seg.groupName || ''}`;
+    seg.entries.forEach((e, ei) => {
+      if (e.note) return;
+      e.cells.forEach(c => {
+        if (c.skip || c.empty || !c.text) return;
+        const endEntry = seg.entries[ei + (c.span || 1)];
+        const endTime = (endEntry && isTime(endEntry.time)) ? endEntry.time : '';
+        getSubs(c).forEach((sub, si) => {
+          if (sub.cancelled) return;
+          const key = `${segKey}|${c.name}|${e.time}|${si}`;
+          if (!myLessons.has(key)) return;
+          const isNoteRoom = isTimeNoteRoom(c.name);
+          const note = isNoteRoom ? getMyNote(dayName, key) : '';
+          const slot = timeToMinutes(e.time);
+          const nm = note ? noteMinutes(note) : null;
+          items.push({
+            time: e.time,
+            end: isNoteRoom ? '' : endTime,
+            room: (block.type === "מגמות" && seg.groupName) ? `${seg.groupName} · ${c.name}` : c.name,
+            html: formatCellHtml(sub.rawText, sub.runs, sub.baseBold, sub.baseStrike),
+            text: clean(sub.rawText),
+            cls: trackClass(seg, block.type),
+            note, key, picked: notifyPicks.has(key),
+            s: nm != null ? nm : (slot || 0),
+            e: (!isNoteRoom && endTime) ? timeToMinutes(endTime) : null
           });
         });
       });
     });
-    items.sort((a,b) => (timeToMinutes(a.time)||0) - (timeToMinutes(b.time)||0));
-    return { block, items };
+  }));
+  getCustom(dayName).forEach(c => {
+    const s = timeToMinutes(c.start || '');
+    if (s == null) return;
+    items.push({
+      custom: true, id: c.id, time: c.start, end: c.end || '', room: 'אישי', html: escHtml(c.text), text: c.text, cls: 'seg-custom',
+      note: '', key: '', picked: false, s, e: c.end ? timeToMinutes(c.end) : null
+    });
   });
+  items.sort((a, b) => a.s - b.s);
+  return items;
+}
 
-  const total = sections.reduce((n, sec) => n + sec.items.length, 0);
-  if (!total) {
-    return `<div class="my-hint" style="display:block">עדיין לא סימנת שיעורים ליום הזה. חזור לתצוגה הרגילה (לחץ שוב על "המערכת שלי") ולחץ על ה-☆ ליד כל שיעור שלך.</div>`;
-  }
-
-  return sections.map(({ block, items }) => {
-    const typeClass = block.type === "סדנאות" ? "type-sadnaot" : "type-magamot";
-    const body = items.length
-      ? `<div class="agenda">${items.map(it => `
+function renderPersonalAgenda(blocks, dayName){
+  const pickMode = isPickMode();
+  const items = getAgendaItems(blocks, dayName);
+  let body;
+  if (!items.length) {
+    body = `<div class="my-hint" style="display:block">עדיין לא סימנת שיעורים ליום הזה. חזור לתצוגה הרגילה (לחץ שוב על "המערכת שלי") ולחץ על ה-☆ ליד כל שיעור שלך. אפשר גם להוסיף משהו משלך בכפתור למטה.</div>`;
+  } else {
+    body = `<section class="block type-my">
+      <div class="block-head"><span class="bar"></span><h2>המערכת שלי לפי שעות</h2></div>
+      <div class="agenda">${items.map(it => `
         <div class="agenda-item ${it.cls}">
           <div class="agenda-time mono">${it.note || it.time}${(!it.note && it.end) ? `<span class="agenda-end">עד ${it.end}</span>` : ''}</div>
           <div class="agenda-body">
             <div class="agenda-room">${escHtml(it.room)}</div>
             <div class="agenda-text">${it.html}</div>
           </div>
-          ${pickMode ? `<button class="bell-btn${it.picked ? ' on' : ''}" data-day="${escHtml(dayName)}" data-key="${escHtml(it.key)}" title="התראה לשיעור הזה">${it.picked ? '🔔' : '🔕'}</button>` : ''}
-        </div>`).join('')}</div>`
-      : `<div class="agenda-empty">לא סימנת כאן שיעורים</div>`;
-    return `<section class="block ${typeClass}">
-      <div class="block-head">
-        <span class="bar"></span>
-        <h2>${block.type || 'לוח יום'}</h2>
-        <span class="grade">${block.grade || ''}</span>
-      </div>
-      ${body}
+          ${it.custom ? `<button class="soc-x" data-act="custom-del" data-day="${escHtml(dayName)}" data-id="${escHtml(it.id)}" title="מחק">✕</button>` : ''}
+          ${(pickMode && !it.custom) ? `<button class="bell-btn${it.picked ? ' on' : ''}" data-day="${escHtml(dayName)}" data-key="${escHtml(it.key)}" title="התראה לשיעור הזה">${it.picked ? '🔔' : '🔕'}</button>` : ''}
+        </div>`).join('')}</div>
     </section>`;
-  }).join('');
+  }
+  return body + renderCustomForm(dayName) + renderSocial(blocks, dayName);
 }
+
+function renderCustomForm(dayName){
+  const chips = ['הפסקה', 'ארוחה', 'פגישה', 'מבחן', 'אחר'].map(t => `<button type="button" class="soc-chip" data-act="custom-chip" data-t="${t}">${t}</button>`).join('');
+  return `<div class="soc-box">
+    <button type="button" class="soc-btn" data-act="custom-open">➕ הוספת משהו שלא רשום במערכת</button>
+    <div class="soc-form" id="customForm" hidden>
+      <div class="soc-label">מה זה? (אפשר ללחוץ על אחת האפשרויות או לכתוב בעצמך)</div>
+      <div class="soc-chips">${chips}</div>
+      <input type="text" id="customText" class="soc-input" maxlength="60" placeholder="למשל: פגישה עם יעל" />
+      <div class="soc-row">
+        <label>משעה <input type="time" id="customStart" class="soc-input" /></label>
+        <label>עד שעה (לא חובה) <input type="time" id="customEnd" class="soc-input" /></label>
+      </div>
+      <div class="soc-row">
+        <button type="button" class="soc-btn primary" data-act="custom-save" data-day="${escHtml(dayName)}">הוסף ליום ${escHtml(dayName)}</button>
+        <button type="button" class="soc-btn" data-act="custom-cancel">ביטול</button>
+      </div>
+      <div class="soc-msg" id="customMsg"></div>
+    </div>
+  </div>`;
+}
+
+/* ----- sharing ----- */
+function getFriends(){
+  try { const o = JSON.parse(localStorage.getItem('friends') || '{}'); return (o && typeof o === 'object') ? o : {}; }
+  catch(e){ return {}; }
+}
+function setFriends(o){ localStorage.setItem('friends', JSON.stringify(o)); }
+function b64urlEncode(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = ''; for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64urlDecode(s){
+  s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '=';
+  const bin = atob(s); const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+async function ensureAllDaysLoaded(){
+  for (let i = 0; i < DAYS.length; i++) {
+    if (cache[DAYS[i].gid]) continue;
+    try { await fetchDayData(i); } catch (e) { console.error('load failed', DAYS[i].name, e); }
+  }
+}
+function buildSharePayload(name){
+  const d = {}; let count = 0;
+  DAYS.forEach(day => {
+    const items = getAgendaItems(cache[day.gid], day.name);
+    d[day.name] = items.map(it => [fmtMin(it.s), it.e != null ? fmtMin(it.e) : '', (it.text || '').slice(0, 50)]);
+    count += items.length;
+  });
+  return { json: { v: 1, n: name, d }, count };
+}
+function shareState(){ try { return JSON.parse(localStorage.getItem('shareId') || 'null'); } catch(e){ return null; } }
+function randId(n){ const a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a, x => 'abcdefghijkmnpqrstuvwxyz23456789'[x % 32]).join(''); }
+async function shareApi(path, body){
+  const r = await fetch(pushUrl('/api/share/' + path), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error('share ' + r.status);
+  return r.json();
+}
+let shareTimer = null;
+function scheduleShareSync(){
+  const st = shareState();
+  if (!st || !st.on || DISPLAY_MODE || !pushConfigured()) return;
+  clearTimeout(shareTimer);
+  shareTimer = setTimeout(() => pushShare().catch(e => console.error('share sync failed', e)), 1500);
+}
+async function pushShare(){
+  const st = shareState();
+  if (!st || !st.on) return false;
+  await ensureAllDaysLoaded();
+  const { json } = buildSharePayload(st.name);
+  await shareApi('put', { code: st.code, secret: st.secret, name: st.name, d: json.d });
+  return true;
+}
+function customFormOpen(){ const f = document.getElementById('customForm'); return !!(f && !f.hidden); }
+
+async function shareMySchedule(){
+  const old = shareState();
+  const name = (prompt('איך קוראים לך? (השם יוצג לחברים שיקבלו את המערכת)', (old && old.name) || localStorage.getItem('myName') || '') || '').trim();
+  if (!name) return;
+  localStorage.setItem('myName', name);
+  await ensureAllDaysLoaded();
+  const { json, count } = buildSharePayload(name);
+  if (!count) { alert('עוד לא סימנת שיעורים ואין לך פריטים אישיים, אז אין מה לשתף. סמן שיעורים ב-☆ ואז נסה שוב.'); return; }
+  let url = '', text = '';
+  if (pushConfigured()) {
+    const st = old && old.code ? old : { code: randId(10), secret: randId(24) };
+    st.name = name; st.on = true;
+    try {
+      await shareApi('put', { code: st.code, secret: st.secret, name, d: json.d });
+      localStorage.setItem('shareId', JSON.stringify(st));
+      url = location.origin + location.pathname + '?s=' + st.code;
+      text = `${name} שיתפ/ה איתך את המערכת שלו/ה בשיח. לחץ/י על הקישור כדי להוסיף ולראות מתי יש לכם הפסקה משותפת. המערכת מתעדכנת אוטומטית:`;
+    } catch (e) { console.error(e); }
+  }
+  if (!url) {
+    url = location.origin + location.pathname + '?f=' + b64urlEncode(JSON.stringify(json));
+    text = `${name} שלח/ה לך את המערכת שלו/ה בשיח. לחץ/י על הקישור כדי להוסיף ולראות מתי יש לכם הפסקה משותפת:`;
+  }
+  rerenderCurrent();
+  if (navigator.share) {
+    try { await navigator.share({ title: 'המערכת שלי בשיח', text, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(text + '\n' + url); alert('הקישור הועתק! אפשר להדביק אותו בוואטסאפ ולשלוח לחברים.'); }
+  catch (e) { prompt('העתק את הקישור ושלח אותו לחברים:', text + '\n' + url); }
+}
+async function stopSharing(){
+  const st = shareState();
+  if (!st) return;
+  if (!confirm('להפסיק לשתף? החברים שלך לא יראו יותר את המערכת שלך.')) return;
+  try { await shareApi('del', { code: st.code, secret: st.secret }); } catch (e) { alert('לא הצלחתי להתחבר לשרת. נסה שוב בעוד רגע.'); return; }
+  localStorage.removeItem('shareId');
+  rerenderCurrent();
+}
+async function importSharedFromUrl(){
+  if (DISPLAY_MODE) return;
+  const params = new URLSearchParams(location.search);
+  const live = params.get('s'), snap = params.get('f');
+  if (!live && !snap) return;
+  try { history.replaceState(null, '', location.pathname); } catch (e) {}
+  const friends = getFriends();
+  if (live) {
+    if (!/^[A-Za-z0-9_-]{8,24}$/.test(live) || !pushConfigured()) { alert('הקישור לא תקין.'); return; }
+    const mine = shareState();
+    if (mine && mine.code === live) { alert('זה הקישור שלך. שלח אותו לחברים.'); return; }
+    let e = null;
+    try { const r = await shareApi('get', { codes: [live] }); e = r.shares && r.shares[live]; } catch (err) { alert('לא הצלחתי להתחבר לשרת. נסה שוב בעוד רגע.'); return; }
+    if (!e) { alert('הקישור לא פעיל יותר. ייתכן שהחבר/ה הפסיק/ה לשתף. בקש/י קישור חדש.'); return; }
+    if (!confirm(`${e.name} שיתפ/ה איתך את המערכת שלו/ה.\nלהוסיף לרשימת החברים שלך? המערכת תתעדכן אצלך אוטומטית.`)) return;
+    friends[live] = { id: live, code: live, name: e.name, d: e.d, ts: e.updated, on: true };
+  } else {
+    let obj = null;
+    try { obj = JSON.parse(b64urlDecode(snap)); } catch (e) {}
+    if (!obj || obj.v !== 1 || !obj.n || !obj.d) { alert('הקישור לא תקין או שנחתך. בקש מהחבר/ה לשלוח שוב.'); return; }
+    const name = String(obj.n).slice(0, 30);
+    if (!confirm(`${name} שלח/ה לך את המערכת שלו/ה.\nלהוסיף לרשימת החברים שלך כדי לראות הפסקות משותפות?`)) return;
+    const d = {};
+    DAYS.forEach(day => { const a = obj.d[day.name]; d[day.name] = Array.isArray(a) ? a.slice(0, 40).map(r => [String(r[0] || ''), String(r[1] || ''), String(r[2] || '').slice(0, 50)]) : []; });
+    friends[name] = { id: name, name, d, ts: Date.now(), on: true };
+  }
+  setFriends(friends);
+  setPersonalMode(true); syncMyToggleUI(); rerenderCurrent();
+}
+
+let friendsRefreshAt = 0, friendsRefreshing = false;
+async function refreshFriends(){
+  if (friendsRefreshing || !pushConfigured() || DISPLAY_MODE) return;
+  const codes = Object.values(getFriends()).filter(f => f.code).map(f => f.code).slice(0, 30);
+  if (!codes.length || Date.now() - friendsRefreshAt < 40000) return;
+  friendsRefreshing = true; friendsRefreshAt = Date.now();
+  try {
+    const r = await shareApi('get', { codes });
+    const cur = getFriends(); let changed = false;
+    Object.values(cur).forEach(f => {
+      if (!f.code) return;
+      const e = r.shares && r.shares[f.code];
+      if (e) {
+        if (JSON.stringify(f.d) !== JSON.stringify(e.d) || f.name !== e.name || f.gone) { f.d = e.d; f.name = e.name; f.ts = e.updated; f.gone = false; changed = true; }
+      } else if (!f.gone) { f.gone = true; changed = true; }
+    });
+    if (changed) { setFriends(cur); if (isPersonalMode() && !customFormOpen()) rerenderCurrent(); }
+  } catch (e) { /* offline: keep what we have */ }
+  finally { friendsRefreshing = false; }
+}
+
+const FREE_FROM = 9 * 60, FREE_TO = 14 * 60 + 40;
+function friendBusy(f, dayName){
+  return ((f.d && f.d[dayName]) || []).map(r => { const s = timeToMinutes(r[0]); if (s == null) return null; const e = r[1] ? timeToMinutes(r[1]) : null; return [s, e != null ? e : s + 45]; }).filter(Boolean);
+}
+function commonFree(dayName, busyLists){
+  const all = [].concat(...busyLists).map(([s, e]) => [Math.max(s, FREE_FROM), Math.min(e, FREE_TO)]).filter(([s, e]) => e > s).sort((a, b) => a[0] - b[0]);
+  const free = []; let cur = FREE_FROM;
+  all.forEach(([s, e]) => { if (s > cur) free.push([cur, s]); if (e > cur) cur = e; });
+  if (cur < FREE_TO) free.push([cur, FREE_TO]);
+  return free.filter(([s, e]) => e - s >= 20);
+}
+function renderSocial(blocks, dayName){
+  const friends = Object.entries(getFriends()).map(([k, f]) => Object.assign({}, f, { id: f.id || k })).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  if (friends.some(f => f.code)) setTimeout(refreshFriends, 0);
+  const myShare = shareState();
+  const myItems = getAgendaItems(blocks, dayName);
+  const myBusy = myItems.map(it => [it.s, it.e != null ? it.e : it.s + (it.custom ? 30 : 45)]);
+  const on = friends.filter(f => f.on && !f.gone);
+  let free = '';
+  if (on.length) {
+    const win = commonFree(dayName, [myBusy].concat(on.map(f => friendBusy(f, dayName))));
+    free = `<div class="soc-free"><div class="soc-sub">⏸ זמנים פנויים משותפים · יום ${escHtml(dayName)} (${escHtml(['אני'].concat(on.map(f => f.name)).join(', '))})</div>` +
+      (win.length ? win.map(([s, e]) => `<div class="soc-win"><bdi dir="ltr">${fmtMin(s)}–${fmtMin(e)}</bdi> <span>(${e - s} דקות)</span></div>`).join('') : `<div class="soc-empty">אין זמן פנוי משותף ביום הזה (בין ${fmtMin(FREE_FROM)} ל-${fmtMin(FREE_TO)}).</div>`) +
+      `<div class="soc-note">שיעור בלי שעת סיום נחשב 45 דקות. מה שלא סימנתם בכוכב נחשב פנוי.</div></div>`;
+  }
+  const list = friends.map(f => {
+    const its = (f.d && f.d[dayName]) || [];
+    const detail = its.length ? its.map(r => `<div class="soc-line"><bdi dir="ltr" class="mono">${escHtml(r[0])}${r[1] ? '–' + escHtml(r[1]) : ''}</bdi> ${escHtml(r[2])}</div>`).join('') : '<div class="soc-empty">אין שיעורים מסומנים ביום הזה</div>';
+    return `<div class="soc-friend">
+      <label class="soc-fhead"><input type="checkbox" data-act="friend-on" data-id="${escHtml(f.id)}" ${f.on ? 'checked' : ''}> <b>${escHtml(f.name)}</b> <span class="soc-date">${f.gone ? 'הפסיק/ה לשתף' : (f.code ? 'מתעדכן אוטומטית' : 'עודכן ' + new Date(f.ts || Date.now()).toLocaleDateString('he-IL'))}</span></label>
+      <button class="soc-x" data-act="friend-del" data-id="${escHtml(f.id)}" title="הסר">🗑</button>
+      <details><summary>המערכת שלו/ה ביום ${escHtml(dayName)}</summary>${detail}</details>
+    </div>`;
+  }).join('');
+  return `<div class="soc-box">
+    <div class="soc-title">👥 שיתוף עם חברים</div>
+    <div class="soc-text">שלח את המערכת שלך לחבר/ה בוואטסאפ. כשהם ישלחו לך את שלהם, תראו מתי יש לכם הפסקה ביחד. כל שינוי שתעשה במערכת שלך יתעדכן אצלם אוטומטית.</div>
+    <button type="button" class="soc-btn primary" data-act="share">📤 ${myShare && myShare.on ? 'שלח שוב את הקישור' : 'שלח את המערכת שלי'}</button>
+    ${myShare && myShare.on ? `<div class="soc-live">🟢 המערכת שלך משותפת ומתעדכנת אוטומטית · <button type="button" class="soc-link" data-act="share-stop">הפסק לשתף</button></div>` : ''}
+    ${friends.length ? `<div class="soc-sub">החברים שלי (סמן מי להשוות איתו)</div>${list}${free}` : ''}
+  </div>`;
+}
+
+document.getElementById('main').addEventListener('click', async (ev) => {
+  const el = ev.target.closest('[data-act]');
+  if (!el) return;
+  const act = el.dataset.act;
+  if (act === 'custom-open') { const f = document.getElementById('customForm'); f.hidden = !f.hidden; if (!f.hidden) document.getElementById('customText').focus(); }
+  else if (act === 'custom-cancel') document.getElementById('customForm').hidden = true;
+  else if (act === 'custom-chip') { const t = document.getElementById('customText'); t.value = (el.dataset.t === 'אחר') ? '' : el.dataset.t; t.focus(); }
+  else if (act === 'custom-save') {
+    const text = document.getElementById('customText').value.trim();
+    const start = document.getElementById('customStart').value, end = document.getElementById('customEnd').value;
+    const msg = document.getElementById('customMsg');
+    if (!text) { msg.textContent = 'כתוב מה זה.'; return; }
+    if (!start) { msg.textContent = 'בחר שעת התחלה.'; return; }
+    if (end && timeToMinutes(end) <= timeToMinutes(start)) { msg.textContent = 'שעת הסיום חייבת להיות אחרי שעת ההתחלה.'; return; }
+    const arr = getCustom(el.dataset.day);
+    arr.push({ id: 'c' + Date.now().toString(36) + Math.floor(Math.random() * 1000), text: text.slice(0, 60), start, end: end || '' });
+    setCustom(el.dataset.day, arr);
+    rerenderCurrent();
+  }
+  else if (act === 'custom-del') {
+    if (!confirm('למחוק את הפריט הזה?')) return;
+    setCustom(el.dataset.day, getCustom(el.dataset.day).filter(c => c.id !== el.dataset.id));
+    rerenderCurrent();
+  }
+  else if (act === 'share') { el.disabled = true; try { await shareMySchedule(); } finally { el.disabled = false; } }
+  else if (act === 'friend-del') {
+    const fo = getFriends()[el.dataset.id]; if (!confirm(`להסיר את ${fo ? fo.name : ''} מהרשימה?`)) return;
+    const fr = getFriends(); delete fr[el.dataset.id]; setFriends(fr); rerenderCurrent();
+  }
+  else if (act === 'share-stop') await stopSharing();
+});
+document.getElementById('main').addEventListener('change', (ev) => {
+  const el = ev.target.closest('[data-act="friend-on"]');
+  if (!el) return;
+  const fr = getFriends();
+  if (fr[el.dataset.id]) { fr[el.dataset.id].on = el.checked; setFriends(fr); rerenderCurrent(); }
+});
 
 /* ---------------- fetch + orchestration ---------------- */
 /* שיעור "רדום" = תא עם רקע שחור בגיליון: לא מופיע במערכת ולא בהודעות ביטול */
@@ -1935,7 +2233,7 @@ if (!DISPLAY_MODE) {
   // phone/app: quietly refresh from the sheet every 45 sec, and when returning to the app
   let lastAuto = Date.now();
   function autoRefresh(){
-    if (document.hidden) return;
+    if (document.hidden || customFormOpen()) return;
     lastAuto = Date.now();
     const b = document.querySelector('nav.days button.active');
     const idx = b ? parseInt(b.dataset.idx, 10) : pickInitialDay();
@@ -2000,6 +2298,7 @@ async function syncToServer(){
 }
 let syncTimer = null;
 function scheduleSync(){
+  scheduleShareSync();
   if (DISPLAY_MODE || !pushConfigured() || !pushSupported() || Notification.permission !== 'granted') return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(() => { syncToServer().catch(e => console.error('sync failed', e)); }, 800);
@@ -2105,6 +2404,8 @@ async function renderNotifyPanel(statusMsg, isErr){
   refreshBtn();
   scheduleSync(); // keep the server copy fresh each time the app opens
 })();
+
+setTimeout(() => { importSharedFromUrl(); scheduleShareSync(); }, 900);
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
